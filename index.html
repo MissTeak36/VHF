@@ -370,96 +370,115 @@
 
   .modal-close:active { background: var(--panel2); }
 
-  .modal-body { padding: 14px 18px 24px; }
+  .modal-body { padding: 0 0 32px; }
 
   .channel-badge {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 6px;
     font-family: 'Share Tech Mono', monospace;
     font-size: 11px;
-    letter-spacing: 0.1em;
-    background: rgba(26,46,74,0.06);
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    padding: 5px 12px;
+    letter-spacing: 0.12em;
+    background: rgba(26,46,74,0.05);
+    border-bottom: 1px solid rgba(184,169,138,0.35);
+    padding: 8px 20px;
     color: var(--navy-dim);
-    margin-bottom: 12px;
+    margin-bottom: 0;
   }
 
   .warning-box {
     background: rgba(154,91,0,0.07);
-    border: 1px solid rgba(154,91,0,0.3);
     border-left: 3px solid var(--warn);
-    border-radius: 2px;
-    padding: 10px 13px;
-    font-size: 14px;
+    padding: 10px 20px;
+    font-size: 13px;
     color: var(--warn);
-    margin-bottom: 14px;
+    margin-bottom: 0;
     line-height: 1.5;
+    border-top: none;
+    border-right: none;
+    border-bottom: 1px solid rgba(184,169,138,0.2);
   }
 
   .warning-box.danger {
-    background: rgba(139,32,32,0.07);
-    border-color: rgba(139,32,32,0.3);
+    background: rgba(139,32,32,0.06);
     border-left-color: var(--red);
     color: var(--red);
   }
 
   .warning-box.info {
-    background: rgba(26,46,74,0.05);
-    border-color: rgba(26,46,74,0.2);
+    background: rgba(26,46,74,0.04);
     border-left-color: var(--navy-dim);
     color: var(--navy-dim);
   }
 
-  /* Step blocks */
+  /* Step blocks — clean, edge-to-edge */
   .step-block {
-    background: var(--bg);
-    border: 1px solid rgba(184,169,138,0.5);
-    border-radius: 2px;
-    margin-bottom: 8px;
+    border-bottom: 1px solid rgba(184,169,138,0.25);
+    margin-bottom: 0;
     overflow: hidden;
+    background: transparent;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
   }
 
   .step-header {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.15em;
+    font-size: 9px;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--text-dim);
-    background: var(--panel2);
-    padding: 6px 12px;
-    border-bottom: 1px solid rgba(184,169,138,0.4);
+    background: transparent;
+    padding: 12px 20px 4px;
+    border-bottom: none;
+    opacity: 0.7;
   }
 
-  .step-body { padding: 10px 13px; display: flex; flex-direction: column; gap: 8px; }
+  .step-body {
+    padding: 2px 20px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
-  .step-line { display: flex; flex-direction: column; gap: 2px; }
+  .step-line { display: flex; flex-direction: column; gap: 4px; }
 
   .step-line .say-label {
     font-family: 'Share Tech Mono', monospace;
     font-size: 9px;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--text-dim);
+    opacity: 0.6;
   }
 
+  /* SAY text — large and readable, this is what you speak */
   .step-line .say-text {
-    font-size: 16px;
-    line-height: 1.5;
+    font-family: 'Crimson Pro', serif;
+    font-size: 22px;
+    line-height: 1.45;
     color: var(--text-bright);
+    font-weight: 400;
+  }
+
+  /* ACTION text — smaller, clearly supporting */
+  .step-line.is-action .say-text {
+    font-size: 14px;
+    color: var(--text-dim);
+    font-style: italic;
+    line-height: 1.5;
   }
 
   /* Vessel data tokens */
   .fill {
-    display: inline-block;
+    display: inline;
     background: rgba(154,123,58,0.13);
     border: 1px solid rgba(154,123,58,0.35);
     border-radius: 2px;
-    padding: 0 5px;
+    padding: 1px 6px;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 13px;
+    font-size: 16px;
     color: var(--brass);
     margin: 0 1px;
     vertical-align: baseline;
@@ -472,44 +491,52 @@
     animation: blink-fill 1.8s ease-in-out infinite;
   }
 
+  .fill.loc {
+    background: rgba(42,92,58,0.1);
+    border-color: rgba(42,92,58,0.35);
+    color: var(--green);
+    font-size: 14px;
+  }
+
   @keyframes blink-fill {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
   }
 
-  /* Tips */
+  /* Tips — quiet, at the bottom */
   .tips-card {
-    background: rgba(26,46,74,0.04);
-    border: 1px solid rgba(184,169,138,0.45);
+    margin: 16px 20px 0;
+    background: transparent;
+    border: 1px solid rgba(184,169,138,0.35);
     border-radius: 2px;
     padding: 12px 14px;
-    margin-top: 12px;
   }
 
   .tips-card h4 {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
+    font-size: 9px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--navy-dim);
+    color: var(--text-dim);
     margin-bottom: 8px;
+    opacity: 0.7;
   }
 
   .tips-card ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
 
   .tips-card li {
-    font-size: 14px;
+    font-size: 13px;
     color: var(--text-dim);
     padding-left: 14px;
     position: relative;
-    line-height: 1.4;
+    line-height: 1.45;
   }
 
   .tips-card li::before {
     content: '—';
     position: absolute; left: 0;
-    color: rgba(107,92,58,0.4);
-    font-size: 12px;
+    color: rgba(107,92,58,0.35);
+    font-size: 11px;
   }
 
   /* ── Vessel toggle header (mirrors anchor calculator config-toggle) ── */
@@ -1424,7 +1451,7 @@ function openModal(type) {
   d.steps.forEach(s => {
     html += `<div class="step-block"><div class="step-header">${s.label}</div><div class="step-body">`;
     s.lines.forEach(l => {
-      html += `<div class="step-line"><span class="say-label">${l.say ? '📢 Say:' : '📋 Action:'}</span><span class="say-text">${l.text}</span></div>`;
+      html += `<div class="step-line${l.say ? '' : ' is-action'}"><span class="say-label">${l.say ? '📢 Say:' : '📋 Action:'}</span><span class="say-text">${l.text}</span></div>`;
     });
     html += `</div></div>`;
   });
