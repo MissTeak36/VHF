@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tidal Water — VHF Radio</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="VHF Radio">
+<meta name="theme-color" content="#f4f0e6">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Cinzel:wght@400;600&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f0e6;
+    --panel: #faf7f0;
+    --panel2: #ede8d8;
+    --border: #b8a98a;
+    --navy: #1a2e4a;
+    --navy-dim: #2e4a6b;
+    --brass: #9a7b3a;
+    --brass-dim: #c4993f;
+    --red: #8b2020;
+    --green: #2a5c3a;
+    --text: #1a1a14;
+    --text-dim: #6b5c3a;
+    --text-bright: #0e1c2e;
+    --warn: #9a5a00;
+    --danger: #8b2020;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Crimson Pro', serif;
+    font-size: 20px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(26,46,74,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26,46,74,0.06) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(154,123,58,0.12) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 430px;
+    margin: 0 auto;
+    padding: 0 0 40px;
+  }
+
+  /* ── Header ── */
+  .header {
+    padding: 52px 24px 28px;
+    position: relative;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 50%; transform: translateX(-50%);
+    width: 200px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--navy), transparent);
+  }
+
+  .header-eyebrow {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 0.3em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .header h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 42px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    line-height: 1.1;
+    color: var(--text-bright);
+  }
+
+  .header h1 span { color: var(--navy); }
+
+  .header-sub {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  .header-icon {
+    position: absolute;
+    top: 44px; right: 24px;
+    font-size: 44px;
+    opacity: 0.12;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  /* ── Section label ── */
+  .section-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--navy-dim);
+    margin-bottom: 10px;
+    margin-top: 28px;
+    border-left: 3px solid var(--navy);
+    margin-left: 20px;
+    padding-left: 10px;
+  }
+
+  /* ── Input card ── */
+  .input-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--navy-dim);
+    border-radius: 2px;
+    margin: 0 16px 12px;
+    overflow: hidden;
+  }
+
+  .input-row {
+    display: flex;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(184,169,138,0.4);
+    gap: 10px;
+  }
+
+  .input-row:last-child { border-bottom: none; }
+
+  .input-meta { flex: 1; min-width: 0; }
+
+  .input-meta label {
+    display: block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .input-meta input,
+  .input-meta select {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-bright);
+    font-family: 'Crimson Pro', serif;
+    font-size: 17px;
+    padding: 7px 10px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: border-color 0.2s, background 0.2s;
+  }
+
+  .input-meta input::placeholder { color: rgba(107,92,58,0.4); }
+  .input-meta input:focus,
+  .input-meta select:focus { border-color: var(--navy); background: #fff; }
+
+  .input-meta select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b5c3a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+
+  /* ── Call buttons ── */
+  .call-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 0 16px 12px;
+  }
+
+  .call-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--navy-dim);
+    border-radius: 2px;
+    padding: 16px 14px 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s, transform 0.1s;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .call-btn:active { background: var(--panel2); transform: scale(0.98); }
+
+  .call-btn .btn-icon { font-size: 22px; line-height: 1; margin-bottom: 5px; }
+
+  .call-btn .btn-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .call-btn .btn-name {
+    font-family: 'Cinzel', serif;
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: 0.05em;
+    color: var(--text-bright);
+    line-height: 1.15;
+  }
+
+  .call-btn .btn-ch {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    margin-top: 3px;
+  }
+
+  .btn-mayday   { border-top-color: var(--red); }
+  .btn-mayday   .btn-name { color: var(--red); }
+
+  .btn-panpan   { border-top-color: var(--warn); }
+  .btn-panpan   .btn-name { color: var(--warn); }
+
+  .btn-security { border-top-color: var(--navy); }
+  .btn-security .btn-name { color: var(--navy); }
+
+  .btn-ship     { border-top-color: var(--navy-dim); }
+  .btn-ship     .btn-name { color: var(--navy-dim); }
+
+  .btn-radiocheck {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    border-top-color: var(--brass);
+    padding: 14px 18px;
+  }
+  .btn-radiocheck .btn-icon { font-size: 28px; margin-bottom: 0; flex-shrink: 0; }
+  .btn-radiocheck .btn-name { color: var(--brass); font-size: 22px; }
+
+  /* ── Footer ── */
+  .footer-note {
+    margin: 24px 16px 0;
+    padding: 12px 16px;
+    background: rgba(26,46,74,0.04);
+    border: 1px solid rgba(184,169,138,0.5);
+    border-left: 3px solid var(--navy-dim);
+    border-radius: 2px;
+    font-size: 14px;
+    color: var(--text-dim);
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20,12,4,0.58);
+    z-index: 200;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 16px;
+    overflow-y: auto;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--navy);
+    border-radius: 2px;
+    width: 100%;
+    max-width: 430px;
+    margin: auto;
+    transform: translateY(14px);
+    transition: transform 0.2s;
+    overflow: hidden;
+  }
+
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal.type-mayday     { border-top-color: var(--red); }
+  .modal.type-panpan     { border-top-color: var(--warn); }
+  .modal.type-security   { border-top-color: var(--navy); }
+  .modal.type-ship       { border-top-color: var(--navy-dim); }
+  .modal.type-radiocheck { border-top-color: var(--brass); }
+
+  .modal-header {
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid rgba(184,169,138,0.4);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .modal-header-icon { font-size: 26px; flex-shrink: 0; }
+
+  .modal-header-text { flex: 1; }
+
+  .modal-header-text h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text-bright);
+    line-height: 1;
+  }
+
+  .type-mayday     .modal-header-text h2 { color: var(--red); }
+  .type-panpan     .modal-header-text h2 { color: var(--warn); }
+  .type-security   .modal-header-text h2 { color: var(--navy); }
+  .type-ship       .modal-header-text h2 { color: var(--navy-dim); }
+  .type-radiocheck .modal-header-text h2 { color: var(--brass); }
+
+  .modal-header-text p {
+    font-size: 14px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-top: 2px;
+  }
+
+  .modal-close {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text-dim);
+    width: 32px; height: 32px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .modal-close:active { background: var(--panel2); }
+
+  .modal-body { padding: 14px 18px 24px; }
+
+  .channel-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    background: rgba(26,46,74,0.06);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 5px 12px;
+    color: var(--navy-dim);
+    margin-bottom: 12px;
+  }
+
+  .warning-box {
+    background: rgba(154,91,0,0.07);
+    border: 1px solid rgba(154,91,0,0.3);
+    border-left: 3px solid var(--warn);
+    border-radius: 2px;
+    padding: 10px 13px;
+    font-size: 14px;
+    color: var(--warn);
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  .warning-box.danger {
+    background: rgba(139,32,32,0.07);
+    border-color: rgba(139,32,32,0.3);
+    border-left-color: var(--red);
+    color: var(--red);
+  }
+
+  .warning-box.info {
+    background: rgba(26,46,74,0.05);
+    border-color: rgba(26,46,74,0.2);
+    border-left-color: var(--navy-dim);
+    color: var(--navy-dim);
+  }
+
+  /* Step blocks */
+  .step-block {
+    background: var(--bg);
+    border: 1px solid rgba(184,169,138,0.5);
+    border-radius: 2px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+
+  .step-header {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: var(--panel2);
+    padding: 6px 12px;
+    border-bottom: 1px solid rgba(184,169,138,0.4);
+  }
+
+  .step-body { padding: 10px 13px; display: flex; flex-direction: column; gap: 8px; }
+
+  .step-line { display: flex; flex-direction: column; gap: 2px; }
+
+  .step-line .say-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .step-line .say-text {
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text-bright);
+  }
+
+  /* Vessel data tokens */
+  .fill {
+    display: inline-block;
+    background: rgba(154,123,58,0.13);
+    border: 1px solid rgba(154,123,58,0.35);
+    border-radius: 2px;
+    padding: 0 5px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--brass);
+    margin: 0 1px;
+    vertical-align: baseline;
+  }
+
+  .fill.empty {
+    background: rgba(139,32,32,0.07);
+    border-color: rgba(139,32,32,0.3);
+    color: var(--red);
+    animation: blink-fill 1.8s ease-in-out infinite;
+  }
+
+  @keyframes blink-fill {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Tips */
+  .tips-card {
+    background: rgba(26,46,74,0.04);
+    border: 1px solid rgba(184,169,138,0.45);
+    border-radius: 2px;
+    padding: 12px 14px;
+    margin-top: 12px;
+  }
+
+  .tips-card h4 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--navy-dim);
+    margin-bottom: 8px;
+  }
+
+  .tips-card ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+
+  .tips-card li {
+    font-size: 14px;
+    color: var(--text-dim);
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.4;
+  }
+
+  .tips-card li::before {
+    content: '—';
+    position: absolute; left: 0;
+    color: rgba(107,92,58,0.4);
+    font-size: 12px;
+  }
+
+  /* ── Vessel toggle header (mirrors anchor calculator config-toggle) ── */
+  .vessel-toggle {
+    margin: 0 16px 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--navy-dim);
+    border-radius: 2px;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: background 0.2s;
+    user-select: none;
+  }
+
+  .vessel-toggle:active { background: var(--panel2); }
+
+  .vessel-toggle-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .vessel-toggle-left .icon { font-size: 20px; }
+
+  .vessel-toggle-text .title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    color: var(--text-bright);
+    letter-spacing: 0.05em;
+  }
+
+  .vessel-toggle-text .sub {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 1px;
+    font-style: italic;
+  }
+
+  .vessel-chevron {
+    color: var(--navy);
+    font-size: 15px;
+    transition: transform 0.3s;
+    flex-shrink: 0;
+  }
+
+  .vessel-chevron.open { transform: rotate(180deg); }
+
+  /* Collapsible panel */
+  .vessel-panel {
+    display: none;
+    margin: 0 16px 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 2px 2px;
+    overflow: hidden;
+  }
+
+  .vessel-panel.open { display: block; }
+
+  /* Save button & message — inside vessel panel */
+  .vessel-save-row {
+    padding: 12px 18px 14px;
+    border-top: 1px solid rgba(184,169,138,0.4);
+  }
+
+  .vessel-save-btn {
+    width: 100%;
+    padding: 11px;
+    background: var(--navy);
+    border: none;
+    border-radius: 2px;
+    color: var(--bg);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .vessel-save-btn:active { background: var(--navy-dim); }
+
+  .vessel-saved-msg {
+    display: none;
+    text-align: center;
+    font-size: 12px;
+    color: var(--green);
+    margin-top: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── GPS Location card ── */
+  .location-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--navy-dim);
+    border-radius: 2px;
+    margin: 0 16px 12px;
+    overflow: hidden;
+  }
+
+  .location-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 18px;
+    gap: 12px;
+  }
+
+  .location-left {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .location-icon-wrap {
+    width: 40px; height: 40px;
+    border-radius: 2px;
+    background: rgba(26,46,74,0.08);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .location-text .l-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--text-bright);
+    letter-spacing: 0.05em;
+  }
+
+  .location-text .l-sub {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 190px;
+  }
+
+  .locate-btn {
+    background: var(--navy);
+    border: none;
+    border-radius: 2px;
+    color: var(--bg);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 9px 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s;
+    flex-shrink: 0;
+    letter-spacing: 0.05em;
+  }
+
+  .locate-btn:active { background: var(--navy-dim); }
+  .locate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Expanded location result */
+  .location-result {
+    display: none;
+    border-top: 1px solid rgba(184,169,138,0.4);
+    padding: 12px 18px 14px;
+  }
+
+  .location-result.visible { display: block; }
+
+  .loc-place {
+    font-family: 'Cinzel', serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 3px;
+    line-height: 1.2;
+  }
+
+  .loc-coords {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+
+  .loc-context {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+
+  .loc-use-btn {
+    background: rgba(26,46,74,0.08);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--navy);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 7px 13px;
+    cursor: pointer;
+    letter-spacing: 0.07em;
+    transition: background 0.15s;
+  }
+
+  .loc-use-btn:active { background: rgba(26,46,74,0.16); }
+
+  .loc-use-btn.active {
+    background: rgba(42,92,58,0.1);
+    border-color: rgba(42,92,58,0.4);
+    color: var(--green);
+  }
+
+  .location-error {
+    padding: 8px 18px 12px;
+    font-size: 13px;
+    color: var(--red);
+    font-style: italic;
+    display: none;
+  }
+
+  .location-error.visible { display: block; }
+
+  .spinner {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border: 2px solid rgba(26,46,74,0.2);
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Injected location token colour */
+  .fill.loc {
+    background: rgba(42,92,58,0.1);
+    border-color: rgba(42,92,58,0.35);
+    color: var(--green);
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-eyebrow">TIDAL WATER</div>
+    <h1>VHF<br><span>RADIO</span></h1>
+    <div class="header-sub">Marine communication protocols &amp; scripted call guides.</div>
+    <div class="header-icon">📡</div>
+  </div>
+
+  <!-- Vessel info -->
+  <div class="section-label">⛵ Your Vessel</div>
+
+  <!-- Toggle header -->
+  <div class="vessel-toggle" onclick="toggleVessel()">
+    <div class="vessel-toggle-left">
+      <span class="icon">⛵</span>
+      <div class="vessel-toggle-text">
+        <div class="title">Vessel Setup</div>
+        <div class="sub" id="vessel-summary">Enter your vessel information</div>
+      </div>
+    </div>
+    <div class="vessel-chevron" id="vessel-chevron">▼</div>
+  </div>
+
+  <!-- Collapsible panel -->
+  <div class="vessel-panel" id="vessel-panel">
+  <div class="input-card" style="margin:0; border:none; border-radius:0; border-top:1px solid rgba(184,169,138,0.4);">
+    <div class="input-row">
+      <div class="input-meta">
+        <label>VESSEL NAME</label>
+        <input type="text" id="vessel-name" placeholder="e.g. Sea Breeze" autocomplete="off" oninput="updateVesselSummary()">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-meta">
+        <label>MMSI NUMBER</label>
+        <input type="text" id="mmsi" placeholder="9-digit DSC number" maxlength="9" inputmode="numeric" autocomplete="off">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-meta">
+        <label>VESSEL TYPE</label>
+        <select id="vessel-type" onchange="updateVesselSummary()">
+          <option value="">Select type…</option>
+          <option>Sailboat</option>
+          <option>Motorboat</option>
+          <option>Cabin Cruiser</option>
+          <option>Sport Fishing</option>
+          <option>Pontoon</option>
+          <option>Trawler</option>
+          <option>Catamaran</option>
+          <option>Kayak / Canoe</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-meta">
+        <label>HULL COLOUR</label>
+        <input type="text" id="hull-color" placeholder="e.g. White with blue trim" autocomplete="off">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-meta">
+        <label>PERSONS ON BOARD</label>
+        <input type="number" id="pob" placeholder="e.g. 4" min="1" max="99" inputmode="numeric">
+      </div>
+    </div>
+    <div class="input-row">
+      <div class="input-meta">
+        <label>SKIPPER NAME</label>
+        <input type="text" id="captain" placeholder="Your name" autocomplete="off">
+      </div>
+    </div><!-- /input-row skipper -->
+  </div><!-- /input-card -->
+  <div class="vessel-save-row">
+    <button class="vessel-save-btn" onclick="saveVessel()">💾 SAVE TO THIS DEVICE</button>
+    <div class="vessel-saved-msg" id="vessel-saved-msg">✓ Saved — will reload on your next visit</div>
+  </div>
+  </div><!-- /vessel-panel -->
+
+  <!-- GPS Location -->
+  <div class="section-label">📍 Your Position</div>
+  <div class="location-card">
+    <div class="location-top">
+      <div class="location-left">
+        <div class="location-icon-wrap">📍</div>
+        <div class="location-text">
+          <div class="l-title">Nearest Landmark</div>
+          <div class="l-sub" id="loc-sub">GPS → nearest place name</div>
+        </div>
+      </div>
+      <button class="locate-btn" id="locate-btn" onclick="locateMe()">📍 Use GPS</button>
+    </div>
+
+    <!-- Result panel -->
+    <div class="location-result" id="location-result">
+      <div class="loc-place" id="loc-place"></div>
+      <div class="loc-coords" id="loc-coords"></div>
+      <div class="loc-context" id="loc-context"></div>
+      <button class="loc-use-btn" id="loc-use-btn" onclick="useLocation()">✓ Use this position in call scripts</button>
+    </div>
+
+    <div class="location-error" id="loc-error"></div>
+  </div>
+
+  <!-- Call buttons -->
+  <div class="section-label">📻 Select Call Type</div>
+  <div class="call-grid">
+    <button class="call-btn btn-mayday" onclick="openModal('mayday')">
+      <div class="btn-icon">🆘</div>
+      <div class="btn-tag">Emergency</div>
+      <div class="btn-name">MAYDAY</div>
+      <div class="btn-ch">CH 16 · 156.800 MHz</div>
+    </button>
+    <button class="call-btn btn-panpan" onclick="openModal('panpan')">
+      <div class="btn-icon">⚠️</div>
+      <div class="btn-tag">Urgency</div>
+      <div class="btn-name">PAN PAN</div>
+      <div class="btn-ch">CH 16 · 156.800 MHz</div>
+    </button>
+    <button class="call-btn btn-security" onclick="openModal('security')">
+      <div class="btn-icon">🔔</div>
+      <div class="btn-tag">Safety</div>
+      <div class="btn-name">SÉCURITÉ</div>
+      <div class="btn-ch">CH 16 → CH 22A</div>
+    </button>
+    <button class="call-btn btn-ship" onclick="openModal('ship')">
+      <div class="btn-icon">🚢</div>
+      <div class="btn-tag">Working</div>
+      <div class="btn-name">SHIP TO SHIP</div>
+      <div class="btn-ch">CH 9 or CH 68–72</div>
+    </button>
+    <button class="call-btn btn-radiocheck" onclick="openModal('radiocheck')">
+      <div class="btn-icon">📡</div>
+      <div>
+        <div class="btn-tag">Test · Routine</div>
+        <div class="btn-name">RADIO CHECK</div>
+        <div class="btn-ch">CH 16 or working channel</div>
+      </div>
+    </button>
+  </div>
+
+  <div class="footer-note">
+    Always monitor Channel 16. Keep radio on with volume up. FCC licence required for offshore and international voyages.
+  </div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-header-icon" id="modal-icon"></div>
+      <div class="modal-header-text">
+        <h2 id="modal-title"></h2>
+        <p id="modal-subtitle"></p>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+const CALLS = {
+  mayday: {
+    icon:'🆘', name:'MAYDAY', subtitle:'Grave & imminent danger — life at risk',
+    channel:'CH 16 · 156.800 MHz', warnClass:'danger',
+    warning:'⚠ MAYDAY is for life-threatening emergencies ONLY. False calls are a federal offence.',
+    steps:[
+      {label:'Step 1 — Set channel & transmit', lines:[
+        {action:true, text:'Switch to <b>Channel 16</b>. Press and hold the transmit button.'}]},
+      {label:'Step 2 — Distress signal (×3)', lines:[
+        {say:true, text:'"<b>MAYDAY, MAYDAY, MAYDAY</b>"'}]},
+      {label:'Step 3 — Identify vessel (×3)', lines:[
+        {say:true, text:'"This is <span class="fill" id="f-m-n1">[ VESSEL NAME ]</span>, <span class="fill" id="f-m-n2">[ VESSEL NAME ]</span>, <span class="fill" id="f-m-n3">[ VESSEL NAME ]</span>"'}]},
+      {label:'Step 4 — Position', lines:[
+        {say:true, text:'"Our position is <span class="fill empty" id="f-m-pos">[ GPS COORDINATES / BEARING / LANDMARK ]</span>"'}]},
+      {label:'Step 5 — Nature of distress', lines:[
+        {say:true, text:'"We are <span class="fill empty">[ sinking / on fire / taking on water / medical emergency ]</span>"'}]},
+      {label:'Step 6 — Persons on board', lines:[
+        {say:true, text:'"There are <span class="fill" id="f-m-pob">[ # ]</span> persons on board"'}]},
+      {label:'Step 7 — Vessel description', lines:[
+        {say:true, text:'"We are a <span class="fill" id="f-m-type">[ TYPE ]</span>, <span class="fill" id="f-m-color">[ HULL COLOUR ]</span>"'}]},
+      {label:'Step 8 — MMSI (if DSC equipped)', lines:[
+        {say:true, text:'"Our MMSI is <span class="fill" id="f-m-mmsi">[ MMSI ]</span>"'}]},
+      {label:'Step 9 — Close call', lines:[
+        {say:true, text:'"<b>OVER</b>"'},
+        {action:true, text:'Release transmit. Wait on CH 16. Repeat every 2–3 min if no response.'}]},
+    ],
+    tips:['Activate DSC distress button before voice call if available','Leave radio on — Coast Guard may use signal to locate you','If abandoning ship, take the radio with you','Rescue vessels and helicopters monitor CH 16']
+  },
+  panpan: {
+    icon:'⚠️', name:'PAN PAN', subtitle:'Urgent — no immediate threat to life',
+    channel:'CH 16 · 156.800 MHz', warnClass:'',
+    warning:'📌 Use for urgent but not yet life-threatening situations: engine failure, medical issue, person overboard (still aboard). Upgrade to MAYDAY if situation worsens.',
+    steps:[
+      {label:'Step 1 — Urgency signal (×3)', lines:[
+        {say:true, text:'"<b>PAN PAN, PAN PAN, PAN PAN</b>"'}]},
+      {label:'Step 2 — Address & identify (×3)', lines:[
+        {say:true, text:'"All stations, all stations, all stations — this is <span class="fill" id="f-pp-name">[ VESSEL NAME ]</span>"'}]},
+      {label:'Step 3 — Position', lines:[
+        {say:true, text:'"Position: <span class="fill empty" id="f-pp-pos">[ GPS / BEARING / LANDMARK ]</span>"'}]},
+      {label:'Step 4 — Nature of urgency', lines:[
+        {say:true, text:'"We have <span class="fill empty">[ engine failure / injured crew / taking on water ]</span>"'}]},
+      {label:'Step 5 — POB & vessel', lines:[
+        {say:true, text:'"<span class="fill" id="f-pp-pob">[ # ]</span> persons aboard a <span class="fill" id="f-pp-type">[ TYPE ]</span>, <span class="fill" id="f-pp-color">[ HULL COLOUR ]</span>"'}]},
+      {label:'Step 6 — Request & close', lines:[
+        {say:true, text:'"Request <span class="fill empty">[ tow / medical advice / pump ]</span>. <b>OVER</b>"'}]},
+    ],
+    tips:['Repeat every 3–4 minutes if no response','Nearby vessels are obligated to assist if safely able','Stay on CH 16 after the call for response']
+  },
+  security: {
+    icon:'🔔', name:'SÉCURITÉ', subtitle:'Safety broadcast — hazard to navigation',
+    channel:'CH 16, then CH 22A (US Coast Guard)', warnClass:'info',
+    warning:'ℹ Not a distress call. Use to warn of hazards: debris, shoaling, unlit vessel, or approaching severe weather.',
+    steps:[
+      {label:'Step 1 — Safety signal (×3) on CH 16', lines:[
+        {say:true, text:'"<b>SÉCURITÉ, SÉCURITÉ, SÉCURITÉ</b>"'}]},
+      {label:'Step 2 — Direct to working channel', lines:[
+        {say:true, text:'"All stations — this is <span class="fill" id="f-s-n1">[ VESSEL NAME ]</span>. Listen on Channel <span class="fill empty">[ 22A ]</span>."'}]},
+      {label:'Step 3 — Switch, repeat & state hazard', lines:[
+        {say:true, text:'"SÉCURITÉ — <span class="fill" id="f-s-n2">[ VESSEL NAME ]</span> reporting <span class="fill empty">[ debris / unlit vessel / shoaling / squall ]</span>"'}]},
+      {label:'Step 4 — Location & close', lines:[
+        {say:true, text:'"Located at <span class="fill empty" id="f-s-pos">[ position / bearing ]</span>. <b>OUT</b>"'}]},
+    ],
+    tips:['End with OUT — no reply expected (broadcast only)','Coast Guard weather alerts are also Sécurité calls','Examples: floating container, disabled vessel, fog bank']
+  },
+  ship: {
+    icon:'🚢', name:'SHIP TO SHIP', subtitle:'Routine vessel-to-vessel contact',
+    channel:'Hail on CH 16, then agree on working channel', warnClass:'info',
+    warning:'📻 Do not carry conversations on CH 16. Use it only to make contact, then agree on a working channel (9, 68, 69, 71, 72, or 78A).',
+    steps:[
+      {label:'Step 1 — Hail on CH 16 (×3)', lines:[
+        {say:true, text:'"<span class="fill empty">[ TARGET VESSEL ]</span>, <span class="fill empty">[ TARGET VESSEL ]</span>, <span class="fill empty">[ TARGET VESSEL ]</span> — this is <span class="fill" id="f-sh-n1">[ YOUR VESSEL ]</span>"'}]},
+      {label:'Step 2 — Propose working channel', lines:[
+        {say:true, text:'"Please switch to Channel <span class="fill empty">[ 9 / 68 / 69 / 72 ]</span>. <b>OVER</b>"'}]},
+      {label:'Step 3 — Both switch, then confirm', lines:[
+        {action:true, text:'Both vessels switch to the agreed channel.'},
+        {say:true, text:'"<span class="fill empty">[ TARGET VESSEL ]</span>, this is <span class="fill" id="f-sh-n2">[ YOUR VESSEL ]</span> on Channel <span class="fill empty">[ # ]</span>. <b>OVER</b>"'}]},
+      {label:'Step 4 — Conduct & close', lines:[
+        {action:true, text:'Keep it brief. End each turn with OVER (expecting reply) or OUT (finished).'}]},
+    ],
+    tips:['CH 9 is the standard recreational hailing channel in US waters','CH 68, 69, 71, 72, 78A are non-commercial working channels','OVER = expecting reply · OUT = conversation complete']
+  },
+  radiocheck: {
+    icon:'📡', name:'RADIO CHECK', subtitle:'Verify your radio is transmitting correctly',
+    channel:'CH 16 or agreed working channel', warnClass:'info',
+    warning:'🔧 Do a radio check before every departure. Ask a marina, Coast Guard Auxiliary, or nearby vessel.',
+    steps:[
+      {label:'Step 1 — Request check', lines:[
+        {say:true, text:'"<span class="fill empty">[ STATION / ANY STATION ]</span>, this is <span class="fill" id="f-rc-n1">[ YOUR VESSEL ]</span> — radio check on Channel <span class="fill empty">[ 16 / 9 ]</span>. <b>OVER</b>"'}]},
+      {label:'Step 2 — Await signal report', lines:[
+        {action:true, text:'Listen for response. Station will report signal quality.'}]},
+      {label:'Signal quality reports', lines:[
+        {action:true, text:'<b>Loud & clear</b> — Excellent &nbsp;·&nbsp; <b>Readable</b> — Good &nbsp;·&nbsp; <b>Slightly broken</b> — Fair &nbsp;·&nbsp; <b>Broken</b> — Poor &nbsp;·&nbsp; <b>Nothing heard</b> — No signal'}]},
+      {label:'Step 3 — Acknowledge & close', lines:[
+        {say:true, text:'"<span class="fill empty">[ STATION ]</span>, <span class="fill" id="f-rc-n2">[ YOUR VESSEL ]</span> — thank you, good day. <b>OUT</b>"'}]},
+    ],
+    tips:['Coast Guard Auxiliary and many marinas will respond','Test both 1W (low) and 25W (high) power settings','No response after 3 attempts → check antenna connections','NOAA weather audio confirms your receiver is working']
+  }
+};
+
+function fld(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+
+// ── Vessel toggle ──
+function toggleVessel() {
+  const panel = document.getElementById('vessel-panel');
+  const chevron = document.getElementById('vessel-chevron');
+  const open = panel.classList.toggle('open');
+  chevron.classList.toggle('open', open);
+}
+
+// ── Summary line shown on toggle header ──
+function updateVesselSummary() {
+  const name = fld('vessel-name');
+  const type = fld('vessel-type');
+  let txt = '';
+  if (name && type) txt = `${name} · ${type}`;
+  else if (name) txt = name;
+  else if (type) txt = type;
+  else txt = 'Enter your vessel information';
+  document.getElementById('vessel-summary').textContent = txt;
+}
+
+// ── Save to localStorage ──
+function saveVessel() {
+  const data = {
+    name: fld('vessel-name'),
+    mmsi: fld('mmsi'),
+    type: fld('vessel-type'),
+    color: fld('hull-color'),
+    pob: fld('pob'),
+    captain: fld('captain')
+  };
+  try {
+    localStorage.setItem('vhf_vessel', JSON.stringify(data));
+    const msg = document.getElementById('vessel-saved-msg');
+    msg.style.display = 'block';
+    setTimeout(() => { msg.style.display = 'none'; }, 3500);
+  } catch(e) {}
+}
+
+// ── Load from localStorage on startup ──
+function loadVessel() {
+  try {
+    const raw = localStorage.getItem('vhf_vessel');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+    set('vessel-name', d.name);
+    set('mmsi', d.mmsi);
+    set('vessel-type', d.type);
+    set('hull-color', d.color);
+    set('pob', d.pob);
+    set('captain', d.captain);
+    updateVesselSummary();
+  } catch(e) {}
+}
+
+loadVessel();
+
+// ── GPS & Location ──
+let gpsLocation = null; // { lat, lon, display, coords }
+
+function locateMe() {
+  const btn = document.getElementById('locate-btn');
+  const errEl = document.getElementById('loc-error');
+  const result = document.getElementById('location-result');
+
+  errEl.className = 'location-error';
+  result.className = 'location-result';
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Locating…';
+  document.getElementById('loc-sub').textContent = 'Acquiring GPS…';
+
+  if (!navigator.geolocation) {
+    showLocError('Geolocation is not supported by this browser.');
+    resetLocBtn();
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => reverseGeocode(pos.coords.latitude, pos.coords.longitude),
+    err => {
+      const msgs = {
+        1: 'Location permission denied. Please allow access in your browser settings.',
+        2: 'Position unavailable. Try again in open water away from obstructions.',
+        3: 'Location request timed out. Please try again.'
+      };
+      showLocError(msgs[err.code] || 'Unable to get location.');
+      resetLocBtn();
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+  );
+}
+
+// ── Offline place database ──
+// Major water bodies, bays, straits, lakes with bounding boxes [minLat, maxLat, minLon, maxLon]
+const WATER_BODIES = [
+  // Pacific Coast Canada/BC
+  {n:'Strait of Georgia',      b:[48.2,50.2,-125.0,-122.5]},
+  {n:'Howe Sound',             b:[49.2,49.9,-123.7,-123.1]},
+  {n:'Burrard Inlet',          b:[49.28,49.35,-123.3,-122.85]},
+  {n:'Indian Arm',             b:[49.35,49.65,-122.9,-122.7]},
+  {n:'Boundary Bay',           b:[48.95,49.1,-123.1,-122.7]},
+  {n:'Semiahmoo Bay',          b:[48.95,49.05,-122.85,-122.7]},
+  {n:'Juan de Fuca Strait',    b:[48.0,48.6,-124.8,-123.0]},
+  {n:'Puget Sound',            b:[47.0,48.2,-123.0,-122.0]},
+  {n:'Georgia Strait',         b:[48.2,50.2,-125.0,-122.5]},
+  {n:'Desolation Sound',       b:[49.9,50.3,-124.9,-124.4]},
+  {n:'Queen Charlotte Sound',  b:[50.5,51.5,-128.5,-126.5]},
+  {n:'Hecate Strait',          b:[51.5,54.5,-131.5,-129.5]},
+  // Great Lakes
+  {n:'Lake Ontario',           b:[43.2,44.3,-79.9,-75.7]},
+  {n:'Lake Erie',              b:[41.4,42.9,-83.5,-78.8]},
+  {n:'Lake Huron',             b:[43.0,46.5,-84.8,-79.7]},
+  {n:'Lake Michigan',          b:[41.6,46.1,-88.0,-84.7]},
+  {n:'Lake Superior',          b:[46.4,49.0,-92.2,-84.3]},
+  {n:'Georgian Bay',           b:[44.5,46.1,-81.7,-79.2]},
+  {n:'Lake Simcoe',            b:[44.2,44.6,-79.8,-79.1]},
+  {n:'Bay of Quinte',          b:[44.0,44.3,-77.5,-76.9]},
+  // Atlantic Canada
+  {n:'Bay of Fundy',           b:[44.5,45.5,-66.5,-64.5]},
+  {n:'Gulf of St. Lawrence',   b:[46.0,50.5,-66.5,-57.0]},
+  {n:'Northumberland Strait',  b:[45.8,46.5,-64.5,-61.5]},
+  {n:'Chaleur Bay',            b:[47.5,48.2,-66.5,-64.5]},
+  {n:'Conception Bay',         b:[47.3,47.8,-53.4,-52.8]},
+  // US East Coast
+  {n:'Chesapeake Bay',         b:[36.9,39.6,-77.0,-75.8]},
+  {n:'Delaware Bay',           b:[38.9,39.6,-75.6,-74.9]},
+  {n:'Long Island Sound',      b:[40.9,41.3,-73.9,-71.8]},
+  {n:'Narragansett Bay',       b:[41.4,41.8,-71.5,-71.1]},
+  {n:'Cape Cod Bay',           b:[41.6,42.1,-70.7,-69.9]},
+  {n:'Penobscot Bay',          b:[43.9,44.5,-69.3,-68.6]},
+  {n:'Tampa Bay',              b:[27.5,28.1,-82.8,-82.3]},
+  {n:'Biscayne Bay',           b:[25.3,25.8,-80.4,-80.1]},
+  {n:'Mobile Bay',             b:[30.2,30.8,-88.2,-87.8]},
+  {n:'Galveston Bay',          b:[29.3,29.8,-95.1,-94.5]},
+  // Gulf of Mexico / Caribbean
+  {n:'Gulf of Mexico',         b:[18.0,30.5,-97.5,-80.0]},
+  // Pacific US
+  {n:'San Francisco Bay',      b:[37.4,38.1,-122.6,-121.9]},
+  {n:'San Diego Bay',          b:[32.6,32.8,-117.2,-117.1]},
+  {n:'Santa Monica Bay',       b:[33.7,34.1,-118.7,-118.3]},
+  {n:'Monterey Bay',           b:[36.6,37.0,-122.2,-121.8]},
+  // Alaska
+  {n:'Cook Inlet',             b:[59.0,61.5,-153.5,-149.5]},
+  {n:'Prince William Sound',   b:[59.8,61.0,-148.5,-145.5]},
+  {n:'Glacier Bay',            b:[58.5,59.3,-137.5,-135.8]},
+  {n:'Lynn Canal',             b:[58.5,59.5,-136.0,-134.8]},
+  // Hawaii
+  {n:'Pearl Harbor',           b:[21.3,21.4,-158.0,-157.9]},
+];
+
+// Nearby cities/towns with coords for "near X" fallback [lat, lon, name, region]
+const CITIES = [
+  // BC
+  [49.2827,-123.1207,'Vancouver','BC'],[49.1666,-123.9400,'Nanaimo','BC'],
+  [48.4284,-123.3656,'Victoria','BC'],[49.1913,-122.8490,'Surrey','BC'],
+  [49.1044,-122.8011,'Langley','BC'],[49.2488,-122.9805,'Burnaby','BC'],
+  [49.1632,-122.9500,'Delta','BC'],[49.3167,-122.9500,'Coquitlam','BC'],
+  [50.6745,-127.4980,'Port Hardy','BC'],[49.6969,-124.9933,'Powell River','BC'],
+  [50.0244,-125.2470,'Campbell River','BC'],[48.8503,-125.1283,'Ucluelet','BC'],
+  [49.9042,-125.0000,'Courtenay','BC'],[49.1653,-123.9400,'Ladysmith','BC'],
+  // Ontario
+  [43.6532,-79.3832,'Toronto','ON'],[44.2312,-76.4860,'Kingston','ON'],
+  [43.2557,-79.8711,'Hamilton','ON'],[43.1594,-79.2469,'St. Catharines','ON'],
+  [42.9849,-81.2453,'London','ON'],[44.3894,-79.6903,'Barrie','ON'],
+  [45.4215,-75.6972,'Ottawa','ON'],[46.4917,-80.9930,'Sudbury','ON'],
+  [42.3224,-83.1763,'Windsor','ON'],[43.7315,-79.7624,'Brampton','ON'],
+  [44.0060,-79.5986,'Newmarket','ON'],[43.8971,-78.8658,'Oshawa','ON'],
+  // Quebec
+  [45.5017,-73.5673,'Montreal','QC'],[46.8139,-71.2080,'Quebec City','QC'],
+  [48.4284,-71.0689,'Saguenay','QC'],
+  // Maritime provinces
+  [44.6476,-63.5728,'Halifax','NS'],[46.0878,-64.7782,'Moncton','NB'],
+  [45.9636,-66.6431,'Fredericton','NB'],[47.5615,-52.7126,'St. Johns','NL'],
+  // US East
+  [40.7128,-74.0060,'New York','NY'],[42.3601,-71.0589,'Boston','MA'],
+  [39.2904,-76.6122,'Baltimore','MD'],[36.8508,-76.2859,'Norfolk','VA'],
+  [32.7765,-79.9311,'Charleston','SC'],[30.3322,-81.6557,'Jacksonville','FL'],
+  [25.7617,-80.1918,'Miami','FL'],[27.9506,-82.4572,'Tampa','FL'],
+  [29.9511,-90.0715,'New Orleans','LA'],[29.7604,-95.3698,'Houston','TX'],
+  // US West
+  [47.6062,-122.3321,'Seattle','WA'],[48.7519,-122.4787,'Bellingham','WA'],
+  [46.1400,-123.8313,'Astoria','OR'],[45.5051,-122.6750,'Portland','OR'],
+  [37.7749,-122.4194,'San Francisco','CA'],[34.0522,-118.2437,'Los Angeles','CA'],
+  [32.7157,-117.1611,'San Diego','CA'],[36.9741,-122.0308,'Santa Cruz','CA'],
+  // Alaska
+  [61.2181,-149.9003,'Anchorage','AK'],[58.3005,-134.4197,'Juneau','AK'],
+  [57.0531,-135.3300,'Sitka','AK'],
+  // Great Lakes misc
+  [43.0962,-79.0377,'Niagara Falls','ON'],[42.2808,-83.7430,'Ann Arbor','MI'],
+  [43.0125,-83.6875,'Flint','MI'],[43.0481,-76.1474,'Syracuse','NY'],
+  [42.8864,-78.8784,'Buffalo','NY'],[41.4993,-81.6944,'Cleveland','OH'],
+  [42.3314,-83.0458,'Detroit','MI'],[43.0481,-76.1474,'Syracuse','NY'],
+  [44.9778,-93.2650,'Minneapolis','MN'],[46.7867,-92.1005,'Duluth','MN'],
+  [44.5133,-88.0133,'Green Bay','WI'],[43.0731,-89.4012,'Madison','WI'],
+  [41.8781,-87.6298,'Chicago','IL'],
+];
+
+function nearestCity(lat, lon) {
+  let best = null, bestDist = Infinity;
+  for (const [clat, clon, name, region] of CITIES) {
+    const d = Math.hypot(lat - clat, lon - clon);
+    if (d < bestDist) { bestDist = d; best = { name, region, dist: d }; }
+  }
+  return best;
+}
+
+function insideWaterBody(lat, lon) {
+  const matches = WATER_BODIES.filter(w => {
+    const [s,n,w2,e] = w.b;
+    return lat >= s && lat <= n && lon >= w2 && lon <= e;
+  });
+  // Return most specific (smallest area)
+  if (!matches.length) return null;
+  matches.sort((a,b) => {
+    const areaA = (a.b[1]-a.b[0])*(a.b[3]-a.b[2]);
+    const areaB = (b.b[1]-b.b[0])*(b.b[3]-b.b[2]);
+    return areaA - areaB;
+  });
+  return matches[0].n;
+}
+
+async function reverseGeocode(lat, lon) {
+  const btn = document.getElementById('locate-btn');
+  const coordStr = formatCoords(lat, lon);
+
+  // Step 1: immediate offline result while API loads
+  const waterName = insideWaterBody(lat, lon);
+  const city = nearestCity(lat, lon);
+  let offlinePlace = '';
+  let offlineContext = '';
+
+  if (waterName && city) {
+    offlinePlace = `${waterName}, near ${city.name}, ${city.region}`;
+    offlineContext = `${waterName} · ${city.name} · ${city.region}`;
+  } else if (waterName) {
+    offlinePlace = waterName;
+    offlineContext = waterName;
+  } else if (city) {
+    offlinePlace = `${city.name}, ${city.region}`;
+    offlineContext = `${city.name} · ${city.region}`;
+  } else {
+    offlinePlace = coordStr;
+    offlineContext = '';
+  }
+
+  // Show offline result immediately
+  showLocationResult(offlinePlace, coordStr, offlineContext);
+  gpsLocation = { lat, lon, display: offlinePlace, coords: coordStr, context: offlineContext, active: false };
+
+  // Step 2: try API to refine (only works when hosted/online)
+  try {
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!resp.ok) throw new Error('API failed');
+    const d = await resp.json();
+
+    // Extract from BigDataCloud response
+    const info = d.localityInfo || {};
+    const waterTypes = ['waterBody','water','bay','lake','ocean','sea','strait',
+                        'channel','fjord','lagoon','reservoir','sound','inlet',
+                        'harbour','harbor','cove','river'];
+    let apiWater = '';
+    for (const item of [...(info.informative||[]), ...(info.administrative||[])]) {
+      if (waterTypes.some(t => (item.description||'').toLowerCase().includes(t) || (item.name||'').toLowerCase().includes(t.toLowerCase()))) {
+        if (item.name && item.name.length > 2) { apiWater = item.name; break; }
+      }
+    }
+
+    const locality   = d.locality || d.city || '';
+    const subDivCode = (d.principalSubdivisionCode||'').split('-').pop() || getStateAbbr(d.principalSubdivision||'');
+    const resolvedWater = apiWater || waterName || '';
+    const resolvedCity  = locality || (city ? city.name : '');
+    const resolvedRegion = subDivCode || (city ? city.region : '');
+
+    let apiPlace = '';
+    if (resolvedWater && resolvedCity) {
+      apiPlace = `${resolvedWater}, near ${resolvedCity}${resolvedRegion ? ', '+resolvedRegion : ''}`;
+    } else if (resolvedWater) {
+      apiPlace = `${resolvedWater}${resolvedRegion ? ', '+resolvedRegion : ''}`;
+    } else if (resolvedCity) {
+      apiPlace = `${resolvedCity}${resolvedRegion ? ', '+resolvedRegion : ''}`;
+    }
+
+    if (apiPlace && apiPlace !== offlinePlace) {
+      const apiContext = [resolvedWater, resolvedCity, resolvedRegion, d.countryName].filter(Boolean).join(' · ');
+      showLocationResult(apiPlace, coordStr, apiContext);
+      gpsLocation = { lat, lon, display: apiPlace, coords: coordStr, context: apiContext, active: false };
+    }
+  } catch(e) {
+    // Offline result already shown — no action needed
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔄 Refresh';
+}
+
+function showLocationResult(place, coordStr, context) {
+  document.getElementById('loc-place').textContent = place;
+  document.getElementById('loc-coords').textContent = coordStr;
+  document.getElementById('loc-context').textContent = context;
+  document.getElementById('location-result').className = 'location-result visible';
+  document.getElementById('loc-sub').textContent = place;
+  document.getElementById('loc-use-btn').className = 'loc-use-btn';
+  document.getElementById('loc-use-btn').textContent = '✓ Use this position in call scripts';
+}
+
+// Common state/province abbreviations
+function getStateAbbr(state) {
+  const map = {
+    'Ontario':'ON','Quebec':'QC','British Columbia':'BC','Alberta':'AB','Manitoba':'MB',
+    'Saskatchewan':'SK','Nova Scotia':'NS','New Brunswick':'NB','Newfoundland and Labrador':'NL',
+    'Prince Edward Island':'PE','Northwest Territories':'NT','Yukon':'YT','Nunavut':'NU',
+    'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA',
+    'Colorado':'CO','Connecticut':'CT','Delaware':'DE','Florida':'FL','Georgia':'GA',
+    'Hawaii':'HI','Idaho':'ID','Illinois':'IL','Indiana':'IN','Iowa':'IA','Kansas':'KS',
+    'Kentucky':'KY','Louisiana':'LA','Maine':'ME','Maryland':'MD','Massachusetts':'MA',
+    'Michigan':'MI','Minnesota':'MN','Mississippi':'MS','Missouri':'MO','Montana':'MT',
+    'Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ','New Mexico':'NM',
+    'New York':'NY','North Carolina':'NC','North Dakota':'ND','Ohio':'OH','Oklahoma':'OK',
+    'Oregon':'OR','Pennsylvania':'PA','Rhode Island':'RI','South Carolina':'SC',
+    'South Dakota':'SD','Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT',
+    'Virginia':'VA','Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY'
+  };
+  return map[state] || state;
+}
+
+function formatCoords(lat, lon) {
+  const latD = Math.abs(lat).toFixed(4);
+  const lonD = Math.abs(lon).toFixed(4);
+  const latH = lat >= 0 ? 'N' : 'S';
+  const lonH = lon >= 0 ? 'E' : 'W';
+  return `${latD}°${latH}, ${lonD}°${lonH}`;
+}
+
+function useLocation() {
+  if (!gpsLocation) return;
+  gpsLocation.active = true;
+  const btn = document.getElementById('loc-use-btn');
+  btn.className = 'loc-use-btn active';
+  btn.textContent = '✓ Position active in call scripts';
+}
+
+function showLocError(msg) {
+  const el = document.getElementById('loc-error');
+  el.textContent = '⚠ ' + msg;
+  el.className = 'location-error visible';
+  document.getElementById('loc-sub').textContent = 'GPS → nearest place name';
+}
+
+function resetLocBtn() {
+  const btn = document.getElementById('locate-btn');
+  btn.disabled = false;
+  btn.innerHTML = '📍 Use GPS';
+}
+
+// Inject location into position fill tokens when opening a modal
+function injectLocation(positionFillIds) {
+  if (!gpsLocation || !gpsLocation.active) return;
+  // Build a rich position string: "Lake Ontario, near Kingston, ON — 44.2312°N, 76.4860°W"
+  const posText = gpsLocation.context
+    ? `${gpsLocation.display} — ${gpsLocation.coords}`
+    : gpsLocation.coords;
+
+  positionFillIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = posText;
+    el.classList.remove('empty');
+    el.classList.add('loc');
+  });
+}
+
+
+function openModal(type) {
+  const d = CALLS[type];
+  const name = fld('vessel-name'), mmsi = fld('mmsi'),
+        vtype = fld('vessel-type'), color = fld('hull-color'), pob = fld('pob');
+
+  document.getElementById('modal-overlay').className = 'modal-overlay open';
+  document.getElementById('modal').className = `modal type-${type}`;
+  document.getElementById('modal-icon').textContent = d.icon;
+  document.getElementById('modal-title').textContent = d.name;
+  document.getElementById('modal-subtitle').textContent = d.subtitle;
+
+  let html = `<div class="channel-badge">📻 ${d.channel}</div>`;
+  html += `<div class="warning-box ${d.warnClass}">${d.warning}</div>`;
+
+  d.steps.forEach(s => {
+    html += `<div class="step-block"><div class="step-header">${s.label}</div><div class="step-body">`;
+    s.lines.forEach(l => {
+      html += `<div class="step-line"><span class="say-label">${l.say ? '📢 Say:' : '📋 Action:'}</span><span class="say-text">${l.text}</span></div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  if (d.tips.length) {
+    html += `<div class="tips-card"><h4>Important Notes</h4><ul>${d.tips.map(t=>`<li>${t}</li>`).join('')}</ul></div>`;
+  }
+
+  document.getElementById('modal-body').innerHTML = html;
+
+  // Inject vessel data into tokens
+  const map = {
+    'f-m-n1':name,'f-m-n2':name,'f-m-n3':name,'f-m-pob':pob,'f-m-type':vtype,'f-m-color':color,'f-m-mmsi':mmsi,
+    'f-pp-name':name,'f-pp-pob':pob,'f-pp-type':vtype,'f-pp-color':color,
+    'f-s-n1':name,'f-s-n2':name,
+    'f-sh-n1':name,'f-sh-n2':name,
+    'f-rc-n1':name,'f-rc-n2':name
+  };
+  Object.entries(map).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (val) { el.textContent = val; el.classList.remove('empty'); }
+    else { el.classList.add('empty'); }
+  });
+
+  // Inject GPS position into position fill tokens
+  const posFills = {
+    mayday:     ['f-m-pos'],
+    panpan:     ['f-pp-pos'],
+    security:   ['f-s-pos'],
+  };
+  injectLocation(posFills[type] || []);
+}
+
+function closeModal() { document.getElementById('modal-overlay').className = 'modal-overlay'; }
+function handleOverlayClick(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>
