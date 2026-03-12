@@ -1387,28 +1387,50 @@ async function reverseGeocode(lat, lon) {
     let apiPlace = '', apiBearing = '', apiContext = '', refLat = null, refLon = null, refName = '';
 
     if (isCanadian(lat, lon)) {
-      // ── NRCan GeoNames — Canadian water bodies & named features ──
-      // Search for nearby named features, prefer water body types
-      const waterCodes = 'COVE,BAY,CHAN,GULF,HARB,INLT,LAKE,LKID,OCN,PASS,RVRS,SEA,STRT,SUND,WHRL';
-      const nrcanUrl = `https://geogratis.gc.ca/services/geoname/en/geonames.json?lat=${lat}&lon=${lon}&radius=50&concise=${waterCodes}&num=5`;
+      // ── NRCan GeoNames — full feature set: water, islands, points, parks, capes ──
+      const nrcanCodes = 'BAY,CHAN,COVE,GULF,HARB,INLT,LAKE,OCN,PASS,RIVR,SEA,STRT,SUND,ISL,ISLE,ARCH,CAPE,PT,HEAD,PENIN,ROCK,SHOL,REEF,PARK,PROV,NPARK,CITY,TOWN,VILG,HAM';
+      const nrcanUrl = `https://geogratis.gc.ca/services/geoname/en/geonames.json?lat=${lat}&lon=${lon}&radius=25&concise=${nrcanCodes}&num=20`;
       const nr = await fetch(nrcanUrl, { signal: AbortSignal.timeout(8000) });
       if (nr.ok) {
         const nd = await nr.json();
         const items = nd.items || [];
         if (items.length > 0) {
-          // Pick closest water feature
-          let best = null, bestDist = Infinity;
+
+          // Feature priority tiers — prefer the most navigationally useful name
+          // Tier 1: named water body you're ON (bay, channel, harbour, strait etc.)
+          // Tier 2: nearby island, point, cape, headland (visible landmarks)
+          // Tier 3: park, settlement as last resort
+          const tier1 = ['BAY','CHAN','COVE','GULF','HARB','INLT','LAKE','OCN','PASS','SEA','STRT','SUND'];
+          const tier2 = ['ISL','ISLE','ARCH','CAPE','PT','HEAD','PENIN','ROCK','REEF','SHOL'];
+          const tier3 = ['PARK','PROV','NPARK','CITY','TOWN','VILG','HAM','RIVR'];
+
+          function featureTier(code) {
+            if (tier1.includes(code)) return 1;
+            if (tier2.includes(code)) return 2;
+            return 3;
+          }
+
+          // Score each feature: lower is better (tier weight + distance penalty)
+          let best = null, bestScore = Infinity;
           for (const item of items) {
             const d = haversineNM(lat, lon, item.latitude, item.longitude);
-            if (d < bestDist) { bestDist = d; best = item; }
+            const code = item.concise?.code || '';
+            const tier = featureTier(code);
+            // Tier 1 features score purely on distance
+            // Tier 2 features get slight penalty so a close bay beats a distant island
+            // Tier 3 only wins if nothing better within 25nm
+            const score = (tier - 1) * 8 + d;
+            if (score < bestScore) { bestScore = score; best = item; }
           }
+
           if (best) {
             refLat = best.latitude; refLon = best.longitude;
             refName = best.name;
             const province = best.province?.code || '';
+            const generic = best.generic || '';
             apiPlace = province ? `${best.name}, ${province}` : best.name;
-            apiBearing = formatBearing(refLat, refLon, lat, lon, refName);
-            apiContext = [best.generic, best.name, province, 'Canada'].filter(Boolean).join(' · ');
+            apiBearing = formatBearing(refLat, refLon, lat, lon, refName + (province ? ', ' + province : ''));
+            apiContext = [generic, best.name, province, 'Canada'].filter(Boolean).join(' · ');
           }
         }
       }
