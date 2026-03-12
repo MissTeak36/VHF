@@ -725,14 +725,6 @@
     line-height: 1.2;
   }
 
-  .loc-coords {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 12px;
-    color: var(--text-dim);
-    letter-spacing: 0.05em;
-    margin-bottom: 4px;
-  }
-
   .loc-bearing {
     font-family: 'Share Tech Mono', monospace;
     font-size: 11px;
@@ -768,6 +760,32 @@
     background: rgba(42,92,58,0.1);
     border-color: rgba(42,92,58,0.4);
     color: var(--green);
+  }
+
+  .loc-coords-ref {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(184,169,138,0.45);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: baseline;
+  }
+
+  .loc-coords-label {
+    font-family: "Share Tech Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    opacity: 0.6;
+  }
+
+  .loc-coords {
+    font-family: "Share Tech Mono", monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
   }
 
   .location-error {
@@ -901,10 +919,13 @@
     <!-- Result panel -->
     <div class="location-result" id="location-result">
       <div class="loc-place" id="loc-place"></div>
-      <div class="loc-coords" id="loc-coords"></div>
       <div class="loc-bearing" id="loc-bearing"></div>
       <div class="loc-context" id="loc-context"></div>
       <button class="loc-use-btn" id="loc-use-btn" onclick="useLocation()">✓ Use this position in call scripts</button>
+      <div class="loc-coords-ref">
+        <span class="loc-coords-label">If asked for coordinates —</span>
+        <span class="loc-coords" id="loc-coords"></span>
+      </div>
     </div>
 
     <div class="location-error" id="loc-error"></div>
@@ -1519,13 +1540,14 @@ function resetLocBtn() {
 // Inject location into position fill tokens when opening a modal
 function injectLocation(positionFillIds) {
   if (!gpsLocation || !gpsLocation.active) return;
-  // Build position string for radio call: bearing first, then coords
-  // e.g. "2.4 nm NW of Ganges Harbour, BC — 48.8534°N, 123.5012°W"
+  // Radio call position — bearing/landmark only, no coordinates
+  // Coast Guard wants: "2.4 nm NW of Ganges Harbour, BC"
+  // Coordinates are shown separately below the position card if asked
   let posText = '';
   if (gpsLocation.bearing) {
-    posText = `${gpsLocation.bearing} — ${gpsLocation.coords}`;
+    posText = gpsLocation.bearing;
   } else if (gpsLocation.display) {
-    posText = `${gpsLocation.display} — ${gpsLocation.coords}`;
+    posText = gpsLocation.display;
   } else {
     posText = gpsLocation.coords;
   }
