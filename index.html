@@ -1330,27 +1330,21 @@ function bearingDeg(lat1, lon1, lat2, lon2) {
 }
 
 function cardinalDetailed(deg) {
-  // 16-point compass
-  const pts = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  const pts = [
+    'North', 'North North East', 'North East', 'East North East',
+    'East', 'East South East', 'South East', 'South South East',
+    'South', 'South South West', 'South West', 'West South West',
+    'West', 'West North West', 'North West', 'North North West'
+  ];
   return pts[Math.round(deg / 22.5) % 16];
-}
-
-function bearingLabel(placelat, placelon, myLat, myLon) {
-  // Bearing FROM place TO me, then invert = my position relative to place
-  const nm = haversineNM(myLat, myLon, placelon !== undefined ? placelon : myLon, placelon !== undefined ? placelon : myLon);
-  // Direction from landmark to vessel (so we say "X nm NW of place")
-  const deg = bearingDeg(placelon !== undefined ? placelon : myLon,
-                          placelon !== undefined ? placelon : myLon, myLat, myLon);
-  return nm;
 }
 
 function formatBearing(placeLat, placeLon, myLat, myLon, placeName) {
   const nm = haversineNM(myLat, myLon, placeLat, placeLon);
-  // Direction FROM the place TO me (so "I am X nm NE of the place")
   const deg = bearingDeg(placeLat, placeLon, myLat, myLon);
   const card = cardinalDetailed(deg);
-  const nmStr = nm < 0.5 ? 'less than 0.5' : nm.toFixed(1);
-  return `${nmStr} nm ${card} of ${placeName}`;
+  const nmStr = nm < 0.5 ? 'less than half a nautical mile' : `${nm.toFixed(1)} nautical miles`;
+  return `${nmStr}, ${card} of ${placeName}`;
 }
 
 // ── Is this a Canadian coordinate? ──
@@ -1541,7 +1535,7 @@ function resetLocBtn() {
 function injectLocation(positionFillIds) {
   if (!gpsLocation || !gpsLocation.active) return;
   // Radio call position — bearing/landmark only, no coordinates
-  // Coast Guard wants: "2.4 nm NW of Ganges Harbour, BC"
+  // Coast Guard wants: "3.2 nautical miles, North West of Ganges Harbour, BC"
   // Coordinates are shown separately below the position card if asked
   let posText = '';
   if (gpsLocation.bearing) {
