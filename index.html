@@ -1398,7 +1398,7 @@ async function reverseGeocode(lat, lon) {
     if (isCanadian(lat, lon)) {
       // ── NRCan GeoNames — full feature set: water, islands, points, parks, capes ──
       const nrcanCodes = 'BAY,CHAN,COVE,GULF,HARB,INLT,OCN,PASS,SEA,STRT,SUND,ISL,ISLE,ARCH,CAPE,PT,HEAD,PENIN,ROCK,SHOL,REEF,CITY,TOWN,VILG,HAM,UNP';
-      const nrcanUrl = `https://geogratis.gc.ca/services/geoname/en/geonames.json?lat=${lat}&lon=${lon}&radius=40&concise=${nrcanCodes}&num=50`;
+      const nrcanUrl = `https://geogratis.gc.ca/services/geoname/en/geonames.json?lat=${lat}&lon=${lon}&radius=20&concise=${nrcanCodes}&num=50`;
       const nr = await fetch(nrcanUrl, { signal: AbortSignal.timeout(8000) });
       if (nr.ok) {
         const nd = await nr.json();
