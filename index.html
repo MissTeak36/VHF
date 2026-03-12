@@ -730,6 +730,14 @@
     font-size: 12px;
     color: var(--text-dim);
     letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+
+  .loc-bearing {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--brass);
+    letter-spacing: 0.08em;
     margin-bottom: 8px;
   }
 
@@ -894,6 +902,7 @@
     <div class="location-result" id="location-result">
       <div class="loc-place" id="loc-place"></div>
       <div class="loc-coords" id="loc-coords"></div>
+      <div class="loc-bearing" id="loc-bearing"></div>
       <div class="loc-context" id="loc-context"></div>
       <button class="loc-use-btn" id="loc-use-btn" onclick="useLocation()">✓ Use this position in call scripts</button>
     </div>
@@ -1282,15 +1291,60 @@ function insideWaterBody(lat, lon) {
   return matches[0].n;
 }
 
+// ── Bearing & distance helpers ──
+function toRad(d) { return d * Math.PI / 180; }
+
+function haversineNM(lat1, lon1, lat2, lon2) {
+  const R = 3440.065; // nautical miles
+  const dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function bearingDeg(lat1, lon1, lat2, lon2) {
+  const dLon = toRad(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+  const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function cardinalDetailed(deg) {
+  // 16-point compass
+  const pts = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return pts[Math.round(deg / 22.5) % 16];
+}
+
+function bearingLabel(placelat, placelon, myLat, myLon) {
+  // Bearing FROM place TO me, then invert = my position relative to place
+  const nm = haversineNM(myLat, myLon, placelon !== undefined ? placelon : myLon, placelon !== undefined ? placelon : myLon);
+  // Direction from landmark to vessel (so we say "X nm NW of place")
+  const deg = bearingDeg(placelon !== undefined ? placelon : myLon,
+                          placelon !== undefined ? placelon : myLon, myLat, myLon);
+  return nm;
+}
+
+function formatBearing(placeLat, placeLon, myLat, myLon, placeName) {
+  const nm = haversineNM(myLat, myLon, placeLat, placeLon);
+  // Direction FROM the place TO me (so "I am X nm NE of the place")
+  const deg = bearingDeg(placeLat, placeLon, myLat, myLon);
+  const card = cardinalDetailed(deg);
+  const nmStr = nm < 0.5 ? 'less than 0.5' : nm.toFixed(1);
+  return `${nmStr} nm ${card} of ${placeName}`;
+}
+
+// ── Is this a Canadian coordinate? ──
+function isCanadian(lat, lon) {
+  return lat >= 41.5 && lat <= 83.0 && lon >= -141.0 && lon <= -52.0;
+}
+
 async function reverseGeocode(lat, lon) {
   const btn = document.getElementById('locate-btn');
   const coordStr = formatCoords(lat, lon);
 
-  // Step 1: immediate offline result while API loads
+  // Step 1: immediate offline result
   const waterName = insideWaterBody(lat, lon);
   const city = nearestCity(lat, lon);
-  let offlinePlace = '';
-  let offlineContext = '';
+  let offlinePlace = '', offlineBearing = '', offlineContext = '';
 
   if (waterName && city) {
     offlinePlace = `${waterName}, near ${city.name}, ${city.region}`;
@@ -1303,64 +1357,110 @@ async function reverseGeocode(lat, lon) {
     offlineContext = `${city.name} · ${city.region}`;
   } else {
     offlinePlace = coordStr;
-    offlineContext = '';
   }
 
-  // Show offline result immediately
-  showLocationResult(offlinePlace, coordStr, offlineContext);
-  gpsLocation = { lat, lon, display: offlinePlace, coords: coordStr, context: offlineContext, active: false };
+  if (city) {
+    const [clat, clon, cname] = CITIES.find(c => c[2] === city.name && c[3] === city.region);
+    offlineBearing = formatBearing(clat, clon, lat, lon, `${cname}, ${city.region}`);
+  }
 
-  // Step 2: try API to refine (only works when hosted/online)
+  showLocationResult(offlinePlace, coordStr, offlineBearing, offlineContext);
+  gpsLocation = { lat, lon, display: offlinePlace, coords: coordStr, bearing: offlineBearing, context: offlineContext, active: false };
+
+  // Step 2: API refinement
   try {
-    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (!resp.ok) throw new Error('API failed');
-    const d = await resp.json();
+    let apiPlace = '', apiBearing = '', apiContext = '', refLat = null, refLon = null, refName = '';
 
-    // Extract from BigDataCloud response
-    const info = d.localityInfo || {};
-    const waterTypes = ['waterBody','water','bay','lake','ocean','sea','strait',
-                        'channel','fjord','lagoon','reservoir','sound','inlet',
-                        'harbour','harbor','cove','river'];
-    let apiWater = '';
-    for (const item of [...(info.informative||[]), ...(info.administrative||[])]) {
-      if (waterTypes.some(t => (item.description||'').toLowerCase().includes(t) || (item.name||'').toLowerCase().includes(t.toLowerCase()))) {
-        if (item.name && item.name.length > 2) { apiWater = item.name; break; }
+    if (isCanadian(lat, lon)) {
+      // ── NRCan GeoNames — Canadian water bodies & named features ──
+      // Search for nearby named features, prefer water body types
+      const waterCodes = 'COVE,BAY,CHAN,GULF,HARB,INLT,LAKE,LKID,OCN,PASS,RVRS,SEA,STRT,SUND,WHRL';
+      const nrcanUrl = `https://geogratis.gc.ca/services/geoname/en/geonames.json?lat=${lat}&lon=${lon}&radius=50&concise=${waterCodes}&num=5`;
+      const nr = await fetch(nrcanUrl, { signal: AbortSignal.timeout(8000) });
+      if (nr.ok) {
+        const nd = await nr.json();
+        const items = nd.items || [];
+        if (items.length > 0) {
+          // Pick closest water feature
+          let best = null, bestDist = Infinity;
+          for (const item of items) {
+            const d = haversineNM(lat, lon, item.latitude, item.longitude);
+            if (d < bestDist) { bestDist = d; best = item; }
+          }
+          if (best) {
+            refLat = best.latitude; refLon = best.longitude;
+            refName = best.name;
+            const province = best.province?.code || '';
+            apiPlace = province ? `${best.name}, ${province}` : best.name;
+            apiBearing = formatBearing(refLat, refLon, lat, lon, refName);
+            apiContext = [best.generic, best.name, province, 'Canada'].filter(Boolean).join(' · ');
+          }
+        }
+      }
+
+      // If NRCan found nothing, fall back to nearest city bearing
+      if (!apiPlace && city) {
+        const [clat, clon, cname, creg] = CITIES.find(c => c[2] === city.name && c[3] === city.region);
+        apiPlace = `${cname}, ${creg}`;
+        apiBearing = formatBearing(clat, clon, lat, lon, `${cname}, ${creg}`);
+        apiContext = offlineContext;
+      }
+
+    } else {
+      // ── BigDataCloud for non-Canadian locations ──
+      const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+      const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (!resp.ok) throw new Error('BDC failed');
+      const d = await resp.json();
+
+      const info = d.localityInfo || {};
+      const waterTypes = ['waterBody','water','bay','lake','ocean','sea','strait','channel','fjord','lagoon','reservoir','sound','inlet','harbour','harbor','cove','river'];
+      let apiWater = '';
+      for (const item of [...(info.informative||[]), ...(info.administrative||[])]) {
+        if (waterTypes.some(t => (item.description||'').toLowerCase().includes(t))) {
+          if (item.name && item.name.length > 2) { apiWater = item.name; break; }
+        }
+      }
+      const locality    = d.locality || d.city || '';
+      const subDivCode  = (d.principalSubdivisionCode||'').split('-').pop() || getStateAbbr(d.principalSubdivision||'');
+      const resolvedWater = apiWater || waterName || '';
+      const resolvedCity  = locality || (city ? city.name : '');
+      const resolvedRegion = subDivCode || (city ? city.region : '');
+
+      if (resolvedWater && resolvedCity) {
+        apiPlace = `${resolvedWater}, near ${resolvedCity}${resolvedRegion ? ', '+resolvedRegion : ''}`;
+      } else if (resolvedWater) {
+        apiPlace = `${resolvedWater}${resolvedRegion ? ', '+resolvedRegion : ''}`;
+      } else if (resolvedCity) {
+        apiPlace = `${resolvedCity}${resolvedRegion ? ', '+resolvedRegion : ''}`;
+      }
+      apiContext = [resolvedWater, resolvedCity, resolvedRegion, d.countryName].filter(Boolean).join(' · ');
+
+      // Bearing from nearest city
+      if (city) {
+        const [clat, clon, cname, creg] = CITIES.find(c => c[2] === city.name && c[3] === city.region);
+        apiBearing = formatBearing(clat, clon, lat, lon, resolvedCity || `${cname}, ${creg}`);
       }
     }
 
-    const locality   = d.locality || d.city || '';
-    const subDivCode = (d.principalSubdivisionCode||'').split('-').pop() || getStateAbbr(d.principalSubdivision||'');
-    const resolvedWater = apiWater || waterName || '';
-    const resolvedCity  = locality || (city ? city.name : '');
-    const resolvedRegion = subDivCode || (city ? city.region : '');
-
-    let apiPlace = '';
-    if (resolvedWater && resolvedCity) {
-      apiPlace = `${resolvedWater}, near ${resolvedCity}${resolvedRegion ? ', '+resolvedRegion : ''}`;
-    } else if (resolvedWater) {
-      apiPlace = `${resolvedWater}${resolvedRegion ? ', '+resolvedRegion : ''}`;
-    } else if (resolvedCity) {
-      apiPlace = `${resolvedCity}${resolvedRegion ? ', '+resolvedRegion : ''}`;
+    if (apiPlace) {
+      showLocationResult(apiPlace, coordStr, apiBearing, apiContext);
+      gpsLocation = { lat, lon, display: apiPlace, coords: coordStr, bearing: apiBearing, context: apiContext, active: false };
     }
 
-    if (apiPlace && apiPlace !== offlinePlace) {
-      const apiContext = [resolvedWater, resolvedCity, resolvedRegion, d.countryName].filter(Boolean).join(' · ');
-      showLocationResult(apiPlace, coordStr, apiContext);
-      gpsLocation = { lat, lon, display: apiPlace, coords: coordStr, context: apiContext, active: false };
-    }
   } catch(e) {
-    // Offline result already shown — no action needed
+    // Offline result already shown
   }
 
   btn.disabled = false;
   btn.innerHTML = '🔄 Refresh';
 }
 
-function showLocationResult(place, coordStr, context) {
+function showLocationResult(place, coordStr, bearing, context) {
   document.getElementById('loc-place').textContent = place;
   document.getElementById('loc-coords').textContent = coordStr;
-  document.getElementById('loc-context').textContent = context;
+  document.getElementById('loc-bearing').textContent = bearing || '';
+  document.getElementById('loc-context').textContent = context || '';
   document.getElementById('location-result').className = 'location-result visible';
   document.getElementById('loc-sub').textContent = place;
   document.getElementById('loc-use-btn').className = 'loc-use-btn';
@@ -1419,10 +1519,16 @@ function resetLocBtn() {
 // Inject location into position fill tokens when opening a modal
 function injectLocation(positionFillIds) {
   if (!gpsLocation || !gpsLocation.active) return;
-  // Build a rich position string: "Lake Ontario, near Kingston, ON — 44.2312°N, 76.4860°W"
-  const posText = gpsLocation.context
-    ? `${gpsLocation.display} — ${gpsLocation.coords}`
-    : gpsLocation.coords;
+  // Build position string for radio call: bearing first, then coords
+  // e.g. "2.4 nm NW of Ganges Harbour, BC — 48.8534°N, 123.5012°W"
+  let posText = '';
+  if (gpsLocation.bearing) {
+    posText = `${gpsLocation.bearing} — ${gpsLocation.coords}`;
+  } else if (gpsLocation.display) {
+    posText = `${gpsLocation.display} — ${gpsLocation.coords}`;
+  } else {
+    posText = gpsLocation.coords;
+  }
 
   positionFillIds.forEach(id => {
     const el = document.getElementById(id);
