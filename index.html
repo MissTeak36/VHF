@@ -1388,8 +1388,8 @@ async function reverseGeocode(lat, lon) {
 
     if (isCanadian(lat, lon)) {
       // ── NRCan GeoNames — full feature set: water, islands, points, parks, capes ──
-      const nrcanCodes = 'BAY,CHAN,COVE,GULF,HARB,INLT,LAKE,OCN,PASS,RIVR,SEA,STRT,SUND,ISL,ISLE,ARCH,CAPE,PT,HEAD,PENIN,ROCK,SHOL,REEF,PARK,PROV,NPARK,CITY,TOWN,VILG,HAM';
-      const nrcanUrl = `https://geogratis.gc.ca/services/geoname/en/geonames.json?lat=${lat}&lon=${lon}&radius=25&concise=${nrcanCodes}&num=20`;
+      const nrcanCodes = 'BAY,CHAN,COVE,GULF,HARB,INLT,LAKE,OCN,PASS,RIVR,SEA,STRT,SUND,ISL,ISLE,ARCH,CAPE,PT,HEAD,PENIN,ROCK,SHOL,REEF,PARK,PROV,NPARK,CITY,TOWN,VILG,HAM,UNP';
+      const nrcanUrl = `https://geogratis.gc.ca/services/geoname/en/geonames.json?lat=${lat}&lon=${lon}&radius=40&concise=${nrcanCodes}&num=50`;
       const nr = await fetch(nrcanUrl, { signal: AbortSignal.timeout(8000) });
       if (nr.ok) {
         const nd = await nr.json();
@@ -1400,26 +1400,30 @@ async function reverseGeocode(lat, lon) {
           // Tier 1: named water body you're ON (bay, channel, harbour, strait etc.)
           // Tier 2: nearby island, point, cape, headland (visible landmarks)
           // Tier 3: park, settlement as last resort
-          const tier1 = ['BAY','CHAN','COVE','GULF','HARB','INLT','LAKE','OCN','PASS','SEA','STRT','SUND'];
-          const tier2 = ['ISL','ISLE','ARCH','CAPE','PT','HEAD','PENIN','ROCK','REEF','SHOL'];
-          const tier3 = ['PARK','PROV','NPARK','CITY','TOWN','VILG','HAM','RIVR'];
+          // Priority: straits/channels → islands → bays/coves → points/capes → settlements
+          // Islands are promoted above bays — Hornby Island beats a nearby cove
+          const tier1 = ['CHAN','GULF','OCN','PASS','SEA','STRT','SUND'];
+          const tier2 = ['ISL','ISLE','ARCH'];
+          const tier3 = ['BAY','COVE','HARB','INLT','LAKE'];
+          const tier4 = ['CAPE','PT','HEAD','PENIN','ROCK','REEF','SHOL'];
 
           function featureTier(code) {
             if (tier1.includes(code)) return 1;
             if (tier2.includes(code)) return 2;
-            return 3;
+            if (tier3.includes(code)) return 3;
+            if (tier4.includes(code)) return 4;
+            return 5;
           }
 
-          // Score each feature: lower is better (tier weight + distance penalty)
+          // Score: lower is better. Penalty per tier step = 5nm equivalent
+          // So an island 9nm away (score=5+9=14) beats a bay 6nm away (score=10+6=16)
+          // but a bay 3nm away (score=10+3=13) beats an island 9nm away (score=14)
+          const TIER_PENALTY = 5;
           let best = null, bestScore = Infinity;
           for (const item of items) {
             const d = haversineNM(lat, lon, item.latitude, item.longitude);
             const code = item.concise?.code || '';
-            const tier = featureTier(code);
-            // Tier 1 features score purely on distance
-            // Tier 2 features get slight penalty so a close bay beats a distant island
-            // Tier 3 only wins if nothing better within 25nm
-            const score = (tier - 1) * 8 + d;
+            const score = (featureTier(code) - 1) * TIER_PENALTY + d;
             if (score < bestScore) { bestScore = score; best = item; }
           }
 
