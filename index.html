@@ -1330,20 +1330,29 @@ function bearingDeg(lat1, lon1, lat2, lon2) {
 }
 
 function cardinalDetailed(deg) {
-  const pts = [
-    'North', 'North North East', 'North East', 'East North East',
-    'East', 'East South East', 'South East', 'South South East',
-    'South', 'South South West', 'South West', 'West South West',
-    'West', 'West North West', 'North West', 'North North West'
-  ];
-  return pts[Math.round(deg / 22.5) % 16];
+  // 8-point compass only
+  const pts = ['North', 'North East', 'East', 'South East', 'South', 'South West', 'West', 'North West'];
+  return pts[Math.round(deg / 45) % 8];
+}
+
+// Cardinal direction only — no distance — used for broad landmark reference
+function cardinalOnly(placeLat, placeLon, myLat, myLon) {
+  const deg = bearingDeg(placeLat, placeLon, myLat, myLon);
+  return cardinalDetailed(deg);
+}
+
+function roundNM(nm) {
+  // Round to nearest 0.5nm
+  // .6, .7 → round down to .5 | .8, .9 → round up to next whole
+  return Math.round(nm * 2) / 2;
 }
 
 function formatBearing(placeLat, placeLon, myLat, myLon, placeName) {
   const nm = haversineNM(myLat, myLon, placeLat, placeLon);
   const deg = bearingDeg(placeLat, placeLon, myLat, myLon);
   const card = cardinalDetailed(deg);
-  const nmStr = nm < 0.5 ? 'less than half a nautical mile' : `${nm.toFixed(1)} nautical miles`;
+  const rounded = roundNM(nm);
+  const nmStr = rounded <= 0.5 ? 'less than half a nautical mile' : `${rounded} nautical miles`;
   return `${nmStr}, ${card} of ${placeName}`;
 }
 
@@ -1388,7 +1397,7 @@ async function reverseGeocode(lat, lon) {
 
     if (isCanadian(lat, lon)) {
       // ── NRCan GeoNames — full feature set: water, islands, points, parks, capes ──
-      const nrcanCodes = 'BAY,CHAN,COVE,GULF,HARB,INLT,LAKE,OCN,PASS,RIVR,SEA,STRT,SUND,ISL,ISLE,ARCH,CAPE,PT,HEAD,PENIN,ROCK,SHOL,REEF,PARK,PROV,NPARK,CITY,TOWN,VILG,HAM,UNP';
+      const nrcanCodes = 'BAY,CHAN,COVE,GULF,HARB,INLT,OCN,PASS,SEA,STRT,SUND,ISL,ISLE,ARCH,CAPE,PT,HEAD,PENIN,ROCK,SHOL,REEF,CITY,TOWN,VILG,HAM,UNP';
       const nrcanUrl = `https://geogratis.gc.ca/services/geoname/en/geonames.json?lat=${lat}&lon=${lon}&radius=40&concise=${nrcanCodes}&num=50`;
       const nr = await fetch(nrcanUrl, { signal: AbortSignal.timeout(8000) });
       if (nr.ok) {
@@ -1403,8 +1412,8 @@ async function reverseGeocode(lat, lon) {
           // Priority: straits/channels → islands → bays/coves → points/capes → settlements
           // Islands are promoted above bays — Hornby Island beats a nearby cove
           const tier1 = ['CHAN','GULF','OCN','PASS','SEA','STRT','SUND'];
-          const tier2 = ['ISL','ISLE','ARCH'];
-          const tier3 = ['BAY','COVE','HARB','INLT','LAKE'];
+          const tier2 = ['ISL','ISLE','ARCH','UNP'];  // UNP = named communities (Hornby Island, Blubber Bay)
+          const tier3 = ['BAY','COVE','HARB','INLT'];
           const tier4 = ['CAPE','PT','HEAD','PENIN','ROCK','REEF','SHOL'];
 
           function featureTier(code) {
@@ -1416,25 +1425,48 @@ async function reverseGeocode(lat, lon) {
           }
 
           // Score: lower is better. Penalty per tier step = 5nm equivalent
-          // So an island 9nm away (score=5+9=14) beats a bay 6nm away (score=10+6=16)
-          // but a bay 3nm away (score=10+3=13) beats an island 9nm away (score=14)
           const TIER_PENALTY = 5;
-          let best = null, bestScore = Infinity;
+
+          // Find best Tier 1+2 feature (broad landmark — island, strait, channel)
+          // and best Tier 3+4 feature (precise fix — bay, cove, point) separately
+          let landmark = null, landmarkScore = Infinity;  // Tier 1 or 2
+          let precise  = null, preciseScore  = Infinity;  // Tier 3 or 4
+
           for (const item of items) {
             const d = haversineNM(lat, lon, item.latitude, item.longitude);
             const code = item.concise?.code || '';
-            const score = (featureTier(code) - 1) * TIER_PENALTY + d;
-            if (score < bestScore) { bestScore = score; best = item; }
+            const t = featureTier(code);
+            const score = (t - 1) * TIER_PENALTY + d;
+
+            if (t <= 2 && score < landmarkScore) { landmarkScore = score; landmark = item; }
+            if (t >= 3 && score < preciseScore)  { preciseScore  = score; precise  = item; }
           }
 
-          if (best) {
-            refLat = best.latitude; refLon = best.longitude;
-            refName = best.name;
-            const province = best.province?.code || '';
-            const generic = best.generic || '';
-            apiPlace = province ? `${best.name}, ${province}` : best.name;
-            apiBearing = formatBearing(refLat, refLon, lat, lon, refName + (province ? ', ' + province : ''));
-            apiContext = [generic, best.name, province, 'Canada'].filter(Boolean).join(' · ');
+          // Build combined position string
+          // Format: "North of Texada Island, 3.7 nautical miles, North West of Caesar Cove, BC"
+          const province = (landmark || precise)?.province?.code || '';
+
+          if (landmark && precise) {
+            const lProv = landmark.province?.code || '';
+            const pProv = precise.province?.code || '';
+            const landmarkDir = cardinalOnly(landmark.latitude, landmark.longitude, lat, lon);
+            const preciseBear = formatBearing(precise.latitude, precise.longitude, lat, lon,
+                                  precise.name + (pProv ? ', ' + pProv : ''));
+            apiBearing = `${landmarkDir} of ${landmark.name}, ${preciseBear}`;
+            apiPlace   = `${landmark.name}${lProv ? ', ' + lProv : ''}`;
+            apiContext  = [landmark.name, precise.name, lProv || pProv, 'Canada'].filter(Boolean).join(' · ');
+          } else if (landmark) {
+            const lProv = landmark.province?.code || '';
+            apiBearing = formatBearing(landmark.latitude, landmark.longitude, lat, lon,
+                           landmark.name + (lProv ? ', ' + lProv : ''));
+            apiPlace   = `${landmark.name}${lProv ? ', ' + lProv : ''}`;
+            apiContext  = [landmark.generic, landmark.name, lProv, 'Canada'].filter(Boolean).join(' · ');
+          } else if (precise) {
+            const pProv = precise.province?.code || '';
+            apiBearing = formatBearing(precise.latitude, precise.longitude, lat, lon,
+                           precise.name + (pProv ? ', ' + pProv : ''));
+            apiPlace   = `${precise.name}${pProv ? ', ' + pProv : ''}`;
+            apiContext  = [precise.generic, precise.name, pProv, 'Canada'].filter(Boolean).join(' · ');
           }
         }
       }
