@@ -1405,16 +1405,15 @@ async function reverseGeocode(lat, lon) {
         const items = nd.items || [];
         if (items.length > 0) {
 
-          // Feature priority tiers — prefer the most navigationally useful name
-          // Tier 1: named water body you're ON (bay, channel, harbour, strait etc.)
-          // Tier 2: nearby island, point, cape, headland (visible landmarks)
-          // Tier 3: park, settlement as last resort
-          // Priority: straits/channels → islands → bays/coves → points/capes → settlements
-          // Islands are promoted above bays — Hornby Island beats a nearby cove
+          // OPTION C TIER STRUCTURE
+          // Tier 1 — Named waterways (channels, straits, passages) — you are ON these
+          // Tier 2 — Islands AND bays/coves/harbours — compete purely on distance
+          // Tier 3 — Points, capes, headlands — last resort navigational marks
+          // Tier 4 — Communities (UNP) — only if nothing else nearby
           const tier1 = ['CHAN','GULF','OCN','PASS','SEA','STRT','SUND'];
-          const tier2 = ['ISL','ISLE','ARCH','UNP'];  // UNP = named communities (Hornby Island, Blubber Bay)
-          const tier3 = ['BAY','COVE','HARB','INLT'];
-          const tier4 = ['CAPE','PT','HEAD','PENIN','ROCK','REEF','SHOL'];
+          const tier2 = ['ISL','ISLE','ARCH','BAY','COVE','HARB','INLT'];
+          const tier3 = ['CAPE','PT','HEAD','PENIN','ROCK','REEF','SHOL'];
+          const tier4 = ['UNP','CITY','TOWN','VILG','HAM'];
 
           function featureTier(code) {
             if (tier1.includes(code)) return 1;
@@ -1424,49 +1423,50 @@ async function reverseGeocode(lat, lon) {
             return 5;
           }
 
-          // Score: lower is better. Penalty per tier step = 5nm equivalent
+          // Score: lower is better. Penalty of 5nm per tier step.
+          // Tier 1 and 2 share the same penalty (0) — a nearby bay beats a distant channel
           const TIER_PENALTY = 5;
+          function tierPenalty(t) { return t <= 2 ? 0 : (t - 2) * TIER_PENALTY; }
 
-          // Find best Tier 1+2 feature (broad landmark — island, strait, channel)
-          // and best Tier 3+4 feature (precise fix — bay, cove, point) separately
-          let landmark = null, landmarkScore = Infinity;  // Tier 1 or 2
-          let precise  = null, preciseScore  = Infinity;  // Tier 3 or 4
+          // Find the single best feature overall (closest wins within tier)
+          let best = null, bestScore = Infinity;
+          // Also track best Tier 1 for use as landmark prefix when far from best
+          let bestLandmark = null, bestLandmarkScore = Infinity;
 
           for (const item of items) {
             const d = haversineNM(lat, lon, item.latitude, item.longitude);
             const code = item.concise?.code || '';
             const t = featureTier(code);
-            const score = (t - 1) * TIER_PENALTY + d;
-
-            if (t <= 2 && score < landmarkScore) { landmarkScore = score; landmark = item; }
-            if (t >= 3 && score < preciseScore)  { preciseScore  = score; precise  = item; }
+            const score = tierPenalty(t) + d;
+            if (score < bestScore) { bestScore = score; best = item; }
+            // Track best Tier 1 waterway separately for landmark prefix
+            if (t === 1 && score < bestLandmarkScore) { bestLandmarkScore = score; bestLandmark = item; }
           }
 
-          // Build combined position string
-          // Format: "North of Texada Island, 3.7 nautical miles, North West of Caesar Cove, BC"
-          const province = (landmark || precise)?.province?.code || '';
+          // DISPLAY RULE:
+          // If within 1nm of best feature → report it alone (you're right there)
+          // If more than 1nm away → prepend best Tier 1 waterway as broad context
+          //   but only if the waterway is different from the best feature itself
+          if (best) {
+            const bestDist = haversineNM(lat, lon, best.latitude, best.longitude);
+            const pProv = best.province?.code || '';
+            const preciseBear = formatBearing(best.latitude, best.longitude, lat, lon,
+                                  best.name + (pProv ? ', ' + pProv : ''));
 
-          if (landmark && precise) {
-            const lProv = landmark.province?.code || '';
-            const pProv = precise.province?.code || '';
-            const landmarkDir = cardinalOnly(landmark.latitude, landmark.longitude, lat, lon);
-            const preciseBear = formatBearing(precise.latitude, precise.longitude, lat, lon,
-                                  precise.name + (pProv ? ', ' + pProv : ''));
-            apiBearing = `${landmarkDir} of ${landmark.name}, ${preciseBear}`;
-            apiPlace   = `${landmark.name}${lProv ? ', ' + lProv : ''}`;
-            apiContext  = [landmark.name, precise.name, lProv || pProv, 'Canada'].filter(Boolean).join(' · ');
-          } else if (landmark) {
-            const lProv = landmark.province?.code || '';
-            apiBearing = formatBearing(landmark.latitude, landmark.longitude, lat, lon,
-                           landmark.name + (lProv ? ', ' + lProv : ''));
-            apiPlace   = `${landmark.name}${lProv ? ', ' + lProv : ''}`;
-            apiContext  = [landmark.generic, landmark.name, lProv, 'Canada'].filter(Boolean).join(' · ');
-          } else if (precise) {
-            const pProv = precise.province?.code || '';
-            apiBearing = formatBearing(precise.latitude, precise.longitude, lat, lon,
-                           precise.name + (pProv ? ', ' + pProv : ''));
-            apiPlace   = `${precise.name}${pProv ? ', ' + pProv : ''}`;
-            apiContext  = [precise.generic, precise.name, pProv, 'Canada'].filter(Boolean).join(' · ');
+            const useLandmark = bestDist > 1.0
+                             && bestLandmark
+                             && bestLandmark.name !== best.name;
+
+            if (useLandmark) {
+              const landmarkDir = cardinalOnly(bestLandmark.latitude, bestLandmark.longitude, lat, lon);
+              apiBearing = `${landmarkDir} of ${bestLandmark.name}, ${preciseBear}`;
+              apiPlace   = `${bestLandmark.name}${bestLandmark.province?.code ? ', ' + bestLandmark.province.code : ''}`;
+              apiContext  = [bestLandmark.name, best.name, pProv, 'Canada'].filter(Boolean).join(' · ');
+            } else {
+              apiBearing = preciseBear;
+              apiPlace   = `${best.name}${pProv ? ', ' + pProv : ''}`;
+              apiContext  = [best.generic, best.name, pProv, 'Canada'].filter(Boolean).join(' · ');
+            }
           }
         }
       }
