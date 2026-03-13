@@ -1313,6 +1313,169 @@ function insideWaterBody(lat, lon) {
 }
 
 // ── Bearing & distance helpers ──
+
+// ── PRIORITY LANDMARK DATABASE ──────────────────────────────────────────────
+// Well-known islands, passages, bays and anchorages in the Pacific Northwest
+// Format: [lat, lon, radius_nm, tier, name]
+// tier 1 = waterways (straits/channels/inlets), tier 2 = islands/bays
+// radius_nm = how far away this landmark is still a useful reference
+const PRIORITY_LANDMARKS = [
+
+  // LARGE 25nm — Major islands
+  [50.114, -125.214, 25, 2, 'Quadra Island'],
+  [50.124, -124.964, 25, 2, 'Cortes Island'],
+  [49.684, -124.414, 25, 2, 'Texada Island'],
+  [50.634, -127.014, 25, 2, 'Malcolm Island'],
+  [48.924, -123.434, 25, 2, 'Galiano Island'],
+  [48.847, -123.295, 25, 2, 'Mayne Island'],
+  [48.834, -123.504, 25, 2, 'Salt Spring Island'],
+  [48.783, -123.164, 25, 2, 'Saturna Island'],
+  [49.384, -123.364, 25, 2, 'Bowen Island'],
+  [49.484, -123.584, 25, 2, 'Gambier Island'],
+  [48.647, -122.943, 25, 2, 'Orcas Island'],
+  [48.535, -123.084, 25, 2, 'San Juan Island'],
+  [48.483, -122.894, 25, 2, 'Lopez Island'],
+  [48.171, -122.596, 25, 2, 'Whidbey Island'],
+  [47.654, -122.524, 25, 2, 'Bainbridge Island'],
+  [47.412, -122.463, 25, 2, 'Vashon Island'],
+
+  // LARGE 25nm — Major straits, sounds, inlets
+  [49.300, -123.800, 25, 1, 'Strait of Georgia'],
+  [50.350, -126.100, 25, 1, 'Johnstone Strait'],
+  [48.550, -123.200, 25, 1, 'Haro Strait'],
+  [48.600, -122.800, 25, 1, 'Rosario Strait'],
+  [50.700, -127.200, 25, 1, 'Queen Charlotte Strait'],
+  [47.700, -122.500, 25, 1, 'Puget Sound'],
+  [47.600, -122.900, 25, 1, 'Hood Canal'],
+  [48.100, -122.700, 25, 1, 'Admiralty Inlet'],
+  [50.064, -124.764, 25, 1, 'Desolation Sound'],
+  [49.600, -123.300, 25, 1, 'Howe Sound'],
+  [48.904, -125.214, 25, 1, 'Barkley Sound'],
+  [50.000, -123.900, 25, 1, 'Jervis Inlet'],
+  [50.500, -124.900, 25, 1, 'Bute Inlet'],
+  [50.700, -125.700, 25, 1, 'Knight Inlet'],
+
+  // MEDIUM 10nm — Smaller islands
+  [49.524, -124.784, 10, 2, 'Denman Island'],
+  [49.524, -124.664, 10, 2, 'Hornby Island'],
+  [49.494, -124.344, 10, 2, 'Lasqueti Island'],
+  [49.157, -123.819, 10, 2, 'Gabriola Island'],
+  [48.634, -123.294, 10, 2, 'Sidney Island'],
+  [48.784, -123.284, 10, 2, 'North Pender Island'],
+  [48.754, -123.224, 10, 2, 'South Pender Island'],
+  [49.034, -123.694, 10, 2, 'Thetis Island'],
+  [49.084, -123.664, 10, 2, 'Valdes Island'],
+  [49.101, -123.741, 10, 2, 'De Courcy Island'],
+  [49.184, -123.934, 10, 2, 'Newcastle Island'],
+  [48.984, -123.644, 10, 2, 'Kuper Island'],
+  [49.434, -123.484, 10, 2, 'Keats Island'],
+  [47.161, -122.704, 10, 2, 'Anderson Island'],
+  [48.564, -122.969, 10, 2, 'Shaw Island'],
+  // Desolation Sound islands
+  [49.934, -124.814, 10, 2, 'Savary Island'],
+  [50.034, -124.964, 10, 2, 'Hernando Island'],
+  [49.954, -125.014, 10, 2, 'Mitlenatch Island'],
+  [50.044, -124.894, 10, 2, 'Marina Island'],
+
+  // MEDIUM 10nm — Passages, narrows, channels
+  [48.874, -123.284, 10, 1, 'Active Pass'],
+  [50.034, -125.234, 10, 1, 'Discovery Passage'],
+  [49.734, -124.414, 10, 1, 'Malaspina Strait'],
+  [48.787, -123.557, 10, 1, 'Sansum Narrows'],
+  [48.784, -123.054, 10, 1, 'Boundary Pass'],
+  [49.014, -123.584, 10, 1, 'Porlier Pass'],
+  [49.124, -123.704, 10, 1, 'Gabriola Passage'],
+  [49.134, -123.814, 10, 1, 'Dodd Narrows'],
+  [49.784, -124.464, 10, 1, 'Sabine Channel'],
+  [48.934, -123.564, 10, 1, 'Trincomali Channel'],
+  [49.084, -123.764, 10, 1, 'Pylades Channel'],
+  [48.684, -123.484, 10, 1, 'Satellite Channel'],
+  [48.814, -123.234, 10, 1, 'Navy Channel'],
+  [48.734, -123.384, 10, 1, 'Swanson Channel'],
+  [48.200, -122.500, 10, 1, 'Saratoga Passage'],
+  [48.234, -122.684, 10, 1, 'Penn Cove'],
+  [47.934, -122.334, 10, 1, 'Possession Sound'],
+  [49.734, -123.784, 10, 1, 'Sechelt Inlet'],
+  [49.384, -122.884, 10, 1, 'Indian Arm'],
+  [49.634, -124.034, 10, 1, 'Pender Harbour'],
+  [50.184, -123.784, 10, 1, 'Princess Louisa Inlet'],
+  [49.834, -123.984, 10, 1, 'Hotham Sound'],
+  [49.134, -125.834, 10, 1, 'Clayoquot Sound'],
+  [49.584, -126.634, 10, 1, 'Nootka Sound'],
+
+  // SMALL 3nm — Harbours, anchorages, bays
+  [49.151, -123.699, 3, 2, 'Silva Bay'],
+  [48.894, -123.394, 3, 2, 'Montague Harbour'],
+  [48.854, -123.504, 3, 2, 'Ganges Harbour'],
+  [48.754, -123.234, 3, 2, 'Bedwell Harbour'],
+  [49.534, -123.934, 3, 2, 'Smuggler Cove'],
+  [49.534, -123.964, 3, 2, 'Secret Cove'],
+  [49.434, -123.464, 3, 2, 'Plumper Cove'],
+  [49.100, -123.734, 3, 2, 'Pirates Cove'],
+  [50.141, -124.688, 3, 2, 'Prideaux Haven'],
+  [50.124, -124.844, 3, 2, 'Refuge Cove'],
+  [50.144, -124.924, 3, 2, 'Squirrel Cove'],
+  [50.094, -124.994, 3, 2, 'Von Donop Inlet'],
+  [50.084, -124.984, 3, 2, 'Gorge Harbour'],
+  [50.106, -125.214, 3, 2, 'Heriot Bay'],
+  [50.064, -124.844, 3, 2, 'Blind Bay'],
+  [50.134, -124.734, 3, 2, 'Tenedos Bay'],
+  [50.394, -124.884, 3, 2, 'Roscoe Bay'],
+  [50.049, -124.749, 3, 2, 'Grace Harbour'],
+  [50.144, -124.744, 3, 2, 'Melanie Cove'],
+  [49.984, -124.764, 3, 2, 'Lund'],
+  [49.674, -124.934, 3, 2, 'Comox Harbour'],
+  [50.014, -125.244, 3, 2, 'Campbell River'],
+  [50.584, -127.084, 3, 2, 'Port McNeill'],
+  [50.584, -126.924, 3, 2, 'Alert Bay'],
+  [50.714, -127.484, 3, 2, 'Port Hardy'],
+  [48.654, -123.394, 3, 2, 'Sidney'],
+  [49.174, -123.934, 3, 2, 'Nanaimo Harbour'],
+  [49.194, -123.954, 3, 2, 'Departure Bay'],
+  [48.994, -123.814, 3, 2, 'Ladysmith Harbour'],
+  [48.759, -123.594, 3, 2, 'Genoa Bay'],
+  [48.796, -123.538, 3, 2, 'Burgoyne Bay'],
+  [48.882, -123.575, 3, 2, 'Vesuvius Bay'],
+  [48.814, -123.604, 3, 2, 'Maple Bay'],
+  [48.744, -123.614, 3, 2, 'Cowichan Bay'],
+  [48.764, -123.444, 3, 2, 'Fulford Harbour'],
+  [48.924, -123.709, 3, 2, 'Chemainus Bay'],
+  [48.584, -123.484, 3, 2, 'Saanich Inlet'],
+  [49.289, -123.144, 3, 2, 'English Bay'],
+  [49.004, -122.954, 3, 2, 'Boundary Bay'],
+  [48.534, -123.014, 3, 2, 'Friday Harbour'],
+  [48.614, -123.154, 3, 2, 'Roche Harbour'],
+  [48.594, -123.164, 3, 2, 'Garrison Bay'],
+  [48.484, -122.914, 3, 2, 'Fisherman Bay'],
+  [47.634, -122.544, 3, 2, 'Eagle Harbour'],
+  [47.334, -122.584, 3, 2, 'Gig Harbour'],
+  [48.114, -122.764, 3, 2, 'Port Townsend'],
+  [48.514, -122.614, 3, 2, 'Anacortes'],
+  [48.752, -122.503, 3, 2, 'Bellingham Bay'],
+  [47.602, -122.369, 3, 2, 'Elliott Bay'],
+  [48.368, -124.625, 3, 2, 'Neah Bay'],
+  [49.526, -124.850, 3, 2, 'Fanny Bay'],
+  [49.314, -124.314, 3, 2, 'Parksville Bay'],
+  [49.394, -124.594, 3, 2, 'Qualicum Bay'],
+  [50.104, -124.974, 3, 2, 'Whaletown'],
+  [50.094, -125.184, 3, 2, 'Rebecca Spit'],
+];
+
+// Look up best priority landmark within its defined radius
+function findPriorityLandmark(lat, lon) {
+  let best = null, bestScore = Infinity;
+  for (const [plat, plon, radius, ptier, pname] of PRIORITY_LANDMARKS) {
+    const d = haversineNM(lat, lon, plat, plon);
+    if (d <= radius) {
+      // Within radius — score by tier then distance
+      // Tier 1 waterways get slight preference over tier 2 at same distance
+      const score = (ptier - 1) * 2 + d;
+      if (score < bestScore) { bestScore = score; best = { name: pname, lat: plat, lon: plon, tier: ptier, dist: d }; }
+    }
+  }
+  return best;
+}
+
 function toRad(d) { return d * Math.PI / 180; }
 
 function haversineNM(lat1, lon1, lat2, lon2) {
@@ -1444,24 +1607,35 @@ async function reverseGeocode(lat, lon) {
           }
 
           // DISPLAY RULE:
-          // If within 1nm of best feature → report it alone (you're right there)
-          // If more than 1nm away → prepend best Tier 1 waterway as broad context
-          //   but only if the waterway is different from the best feature itself
+          // DISPLAY RULE (Option C):
+          // 1. Find best priority landmark from curated database (within its defined radius)
+          // 2. If within 1nm of NRCan best feature → report it alone
+          // 3. If over 1nm away → prepend priority landmark as broad context
+          //    Priority landmark beats the NRCan-derived bestLandmark (Tier 1 channel)
           if (best) {
             const bestDist = haversineNM(lat, lon, best.latitude, best.longitude);
             const pProv = best.province?.code || '';
             const preciseBear = formatBearing(best.latitude, best.longitude, lat, lon,
                                   best.name + (pProv ? ', ' + pProv : ''));
 
-            const useLandmark = bestDist > 1.0
-                             && bestLandmark
-                             && bestLandmark.name !== best.name;
+            // Check priority landmark database first
+            const priorityLM = findPriorityLandmark(lat, lon);
+
+            // Choose landmark source: priority DB preferred, fall back to NRCan Tier 1
+            let chosenLandmark = null;
+            if (priorityLM && priorityLM.name !== best.name) {
+              chosenLandmark = { name: priorityLM.name, lat: priorityLM.lat, lon: priorityLM.lon };
+            } else if (bestLandmark && bestLandmark.name !== best.name) {
+              chosenLandmark = { name: bestLandmark.name, lat: bestLandmark.latitude, lon: bestLandmark.longitude };
+            }
+
+            const useLandmark = bestDist > 1.0 && chosenLandmark;
 
             if (useLandmark) {
-              const landmarkDir = cardinalOnly(bestLandmark.latitude, bestLandmark.longitude, lat, lon);
-              apiBearing = `${landmarkDir} of ${bestLandmark.name}, ${preciseBear}`;
-              apiPlace   = `${bestLandmark.name}${bestLandmark.province?.code ? ', ' + bestLandmark.province.code : ''}`;
-              apiContext  = [bestLandmark.name, best.name, pProv, 'Canada'].filter(Boolean).join(' · ');
+              const landmarkDir = cardinalOnly(chosenLandmark.lat, chosenLandmark.lon, lat, lon);
+              apiBearing = `${landmarkDir} of ${chosenLandmark.name}, ${preciseBear}`;
+              apiPlace   = chosenLandmark.name;
+              apiContext  = [chosenLandmark.name, best.name, pProv, 'Canada'].filter(Boolean).join(' · ');
             } else {
               apiBearing = preciseBear;
               apiPlace   = `${best.name}${pProv ? ', ' + pProv : ''}`;
