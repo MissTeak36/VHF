@@ -885,8 +885,8 @@
     </div>
     <div class="input-row">
       <div class="input-meta">
-        <label>PERSONS ON BOARD</label>
-        <input type="number" id="pob" placeholder="e.g. 4" min="1" max="99" inputmode="numeric">
+        <label>VESSEL LENGTH</label>
+        <input type="text" id="vessel-length" placeholder='e.g. 32 feet / 10 metres' autocomplete="off">
       </div>
     </div>
     <div class="input-row">
@@ -1006,13 +1006,11 @@ const CALLS = {
         {say:true, text:'"Our position is <span class="fill empty" id="f-m-pos">[ GPS COORDINATES / BEARING / LANDMARK ]</span>"'}]},
       {label:'Step 5 — Nature of distress', lines:[
         {say:true, text:'"We are <span class="fill empty">[ sinking / on fire / taking on water / medical emergency ]</span>"'}]},
-      {label:'Step 6 — Persons on board', lines:[
-        {say:true, text:'"There are <span class="fill" id="f-m-pob">[ # ]</span> persons on board"'}]},
-      {label:'Step 7 — Vessel description', lines:[
-        {say:true, text:'"We are a <span class="fill" id="f-m-type">[ TYPE ]</span>, <span class="fill" id="f-m-color">[ HULL COLOUR ]</span>"'}]},
-      {label:'Step 8 — MMSI (if DSC equipped)', lines:[
+      {label:'Step 6 — Vessel description', lines:[
+        {say:true, text:'"We are a <span class="fill" id="f-m-length">[ LENGTH ]</span> <span class="fill" id="f-m-type">[ TYPE ]</span>, <span class="fill" id="f-m-color">[ HULL COLOUR ]</span>"'}]},
+      {label:'Step 7 — MMSI (if DSC equipped)', lines:[
         {say:true, text:'"Our MMSI is <span class="fill" id="f-m-mmsi">[ MMSI ]</span>"'}]},
-      {label:'Step 9 — Close call', lines:[
+      {label:'Step 8 — Close call', lines:[
         {say:true, text:'"<b>OVER</b>"'},
         {action:true, text:'Release transmit. Wait on CH 16. Repeat every 2–3 min if no response.'}]},
     ],
@@ -1031,8 +1029,8 @@ const CALLS = {
         {say:true, text:'"Position: <span class="fill empty" id="f-pp-pos">[ GPS / BEARING / LANDMARK ]</span>"'}]},
       {label:'Step 4 — Nature of urgency', lines:[
         {say:true, text:'"We have <span class="fill empty">[ engine failure / injured crew / taking on water ]</span>"'}]},
-      {label:'Step 5 — POB & vessel', lines:[
-        {say:true, text:'"<span class="fill" id="f-pp-pob">[ # ]</span> persons aboard a <span class="fill" id="f-pp-type">[ TYPE ]</span>, <span class="fill" id="f-pp-color">[ HULL COLOUR ]</span>"'}]},
+      {label:'Step 5 — Vessel description', lines:[
+        {say:true, text:'"We are a <span class="fill" id="f-pp-length">[ LENGTH ]</span> <span class="fill" id="f-pp-type">[ TYPE ]</span>, <span class="fill" id="f-pp-color">[ HULL COLOUR ]</span>"'}]},
       {label:'Step 6 — Request & close', lines:[
         {say:true, text:'"Request <span class="fill empty">[ tow / medical advice / pump ]</span>. <b>OVER</b>"'}]},
     ],
@@ -1118,7 +1116,7 @@ function saveVessel() {
     mmsi: fld('mmsi'),
     type: fld('vessel-type'),
     color: fld('hull-color'),
-    pob: fld('pob'),
+    length: fld('vessel-length'),
     captain: fld('captain')
   };
   try {
@@ -1140,7 +1138,7 @@ function loadVessel() {
     set('mmsi', d.mmsi);
     set('vessel-type', d.type);
     set('hull-color', d.color);
-    set('pob', d.pob);
+    set('vessel-length', d.length);
     set('captain', d.captain);
     updateVesselSummary();
   } catch(e) {}
@@ -1798,8 +1796,8 @@ function injectLocation(positionFillIds) {
 
 function openModal(type) {
   const d = CALLS[type];
-  const name = fld('vessel-name'), mmsi = fld('mmsi'),
-        vtype = fld('vessel-type'), color = fld('hull-color'), pob = fld('pob');
+  const name = (fld('vessel-name') || '').toUpperCase(), mmsi = fld('mmsi'),
+        vtype = fld('vessel-type'), color = fld('hull-color'), length = fld('vessel-length');
 
   document.getElementById('modal-overlay').className = 'modal-overlay open';
   document.getElementById('modal').className = `modal type-${type}`;
@@ -1826,8 +1824,8 @@ function openModal(type) {
 
   // Inject vessel data into tokens
   const map = {
-    'f-m-n1':name,'f-m-n2':name,'f-m-n3':name,'f-m-pob':pob,'f-m-type':vtype,'f-m-color':color,'f-m-mmsi':mmsi,
-    'f-pp-name':name,'f-pp-pob':pob,'f-pp-type':vtype,'f-pp-color':color,
+    'f-m-n1':name,'f-m-n2':name,'f-m-n3':name,'f-m-length':length,'f-m-type':vtype,'f-m-color':color,'f-m-mmsi':mmsi,
+    'f-pp-name':name,'f-pp-length':length,'f-pp-type':vtype,'f-pp-color':color,
     'f-s-n1':name,'f-s-n2':name,
     'f-sh-n1':name,'f-sh-n2':name,
     'f-rc-n1':name,'f-rc-n2':name
