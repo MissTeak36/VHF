@@ -1389,7 +1389,7 @@ const PRIORITY_LANDMARKS = [
   [49.784, -124.464, 10, 1, 'Sabine Channel'],
   [48.934, -123.564, 10, 1, 'Trincomali Channel'],
   [49.084, -123.764, 10, 1, 'Pylades Channel'],
-  [48.684, -123.484, 10, 1, 'Satellite Channel'],
+  [48.650, -123.350, 10, 1, 'Satellite Channel'],
   [48.814, -123.234, 10, 1, 'Navy Channel'],
   [48.734, -123.384, 10, 1, 'Swanson Channel'],
   [48.200, -122.500, 10, 1, 'Saratoga Passage'],
@@ -1621,25 +1621,33 @@ async function reverseGeocode(lat, lon) {
             // Check priority landmark database first
             const priorityLM = findPriorityLandmark(lat, lon);
 
-            // Choose landmark source: priority DB preferred, fall back to NRCan Tier 1
-            let chosenLandmark = null;
-            if (priorityLM && priorityLM.name !== best.name) {
-              chosenLandmark = { name: priorityLM.name, lat: priorityLM.lat, lon: priorityLM.lon };
-            } else if (bestLandmark && bestLandmark.name !== best.name) {
-              chosenLandmark = { name: bestLandmark.name, lat: bestLandmark.latitude, lon: bestLandmark.longitude };
-            }
-
-            const useLandmark = bestDist > 1.0 && chosenLandmark;
-
-            if (useLandmark) {
-              const landmarkDir = cardinalOnly(chosenLandmark.lat, chosenLandmark.lon, lat, lon);
-              apiBearing = `${landmarkDir} of ${chosenLandmark.name}, ${preciseBear}`;
-              apiPlace   = chosenLandmark.name;
-              apiContext  = [chosenLandmark.name, best.name, pProv, 'Canada'].filter(Boolean).join(' · ');
+            // If priority landmark is very close (≤1nm), use it alone — it IS the position
+            if (priorityLM && priorityLM.dist <= 1.0) {
+              const plmBear = formatBearing(priorityLM.lat, priorityLM.lon, lat, lon, priorityLM.name);
+              apiBearing = plmBear;
+              apiPlace   = priorityLM.name;
+              apiContext  = [priorityLM.name, 'Canada'].filter(Boolean).join(' · ');
             } else {
-              apiBearing = preciseBear;
-              apiPlace   = `${best.name}${pProv ? ', ' + pProv : ''}`;
-              apiContext  = [best.generic, best.name, pProv, 'Canada'].filter(Boolean).join(' · ');
+              // Choose landmark source: priority DB preferred, fall back to NRCan Tier 1
+              let chosenLandmark = null;
+              if (priorityLM && priorityLM.name !== best.name) {
+                chosenLandmark = { name: priorityLM.name, lat: priorityLM.lat, lon: priorityLM.lon };
+              } else if (bestLandmark && bestLandmark.name !== best.name) {
+                chosenLandmark = { name: bestLandmark.name, lat: bestLandmark.latitude, lon: bestLandmark.longitude };
+              }
+
+              const useLandmark = bestDist > 1.0 && chosenLandmark;
+
+              if (useLandmark) {
+                const landmarkDir = cardinalOnly(chosenLandmark.lat, chosenLandmark.lon, lat, lon);
+                apiBearing = `${landmarkDir} of ${chosenLandmark.name}, ${preciseBear}`;
+                apiPlace   = chosenLandmark.name;
+                apiContext  = [chosenLandmark.name, best.name, pProv, 'Canada'].filter(Boolean).join(' · ');
+              } else {
+                apiBearing = preciseBear;
+                apiPlace   = `${best.name}${pProv ? ', ' + pProv : ''}`;
+                apiContext  = [best.generic, best.name, pProv, 'Canada'].filter(Boolean).join(' · ');
+              }
             }
           }
         }
