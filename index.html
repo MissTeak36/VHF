@@ -741,26 +741,8 @@
     line-height: 1.4;
   }
 
-  .loc-use-btn {
-    background: rgba(26,46,74,0.08);
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    color: var(--navy);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    padding: 7px 13px;
-    cursor: pointer;
-    letter-spacing: 0.07em;
-    transition: background 0.15s;
-  }
 
-  .loc-use-btn:active { background: rgba(26,46,74,0.16); }
 
-  .loc-use-btn.active {
-    background: rgba(42,92,58,0.1);
-    border-color: rgba(42,92,58,0.4);
-    color: var(--green);
-  }
 
   .loc-coords-ref {
     margin-top: 10px;
@@ -921,7 +903,6 @@
       <div class="loc-place" id="loc-place"></div>
       <div class="loc-bearing" id="loc-bearing"></div>
       <div class="loc-context" id="loc-context"></div>
-      <button class="loc-use-btn" id="loc-use-btn" onclick="useLocation()">✓ Use this position in call scripts</button>
       <div class="loc-coords-ref">
         <span class="loc-coords-label">If asked for coordinates —</span>
         <span class="loc-coords" id="loc-coords"></span>
@@ -1550,7 +1531,7 @@ async function reverseGeocode(lat, lon) {
   }
 
   showLocationResult(offlinePlace, coordStr, offlineBearing, offlineContext);
-  gpsLocation = { lat, lon, display: offlinePlace, coords: coordStr, bearing: offlineBearing, context: offlineContext, active: false };
+  gpsLocation = { lat, lon, display: offlinePlace, coords: coordStr, bearing: offlineBearing, context: offlineContext, active: true };
 
   // Step 2: API refinement
   try {
@@ -1698,7 +1679,7 @@ async function reverseGeocode(lat, lon) {
 
     if (apiPlace) {
       showLocationResult(apiPlace, coordStr, apiBearing, apiContext);
-      gpsLocation = { lat, lon, display: apiPlace, coords: coordStr, bearing: apiBearing, context: apiContext, active: false };
+      gpsLocation = { lat, lon, display: apiPlace, coords: coordStr, bearing: apiBearing, context: apiContext, active: true };
     }
 
   } catch(e) {
@@ -1710,14 +1691,14 @@ async function reverseGeocode(lat, lon) {
 }
 
 function showLocationResult(place, coordStr, bearing, context) {
-  document.getElementById('loc-place').textContent = place;
-  document.getElementById('loc-coords').textContent = coordStr;
-  document.getElementById('loc-bearing').textContent = bearing || '';
+  // Line 1: coordinates (always shown prominently)
+  document.getElementById('loc-place').textContent = coordStr;
+  // Line 2: closest landmark bearing
+  document.getElementById('loc-bearing').textContent = bearing || place || '';
   document.getElementById('loc-context').textContent = context || '';
   document.getElementById('location-result').className = 'location-result visible';
-  document.getElementById('loc-sub').textContent = place;
-  document.getElementById('loc-use-btn').className = 'loc-use-btn';
-  document.getElementById('loc-use-btn').textContent = '✓ Use this position in call scripts';
+  document.getElementById('loc-sub').textContent = coordStr;
+
 }
 
 // Common state/province abbreviations
@@ -1748,13 +1729,7 @@ function formatCoords(lat, lon) {
   return `${latD}°${latH}, ${lonD}°${lonH}`;
 }
 
-function useLocation() {
-  if (!gpsLocation) return;
-  gpsLocation.active = true;
-  const btn = document.getElementById('loc-use-btn');
-  btn.className = 'loc-use-btn active';
-  btn.textContent = '✓ Position active in call scripts';
-}
+
 
 function showLocError(msg) {
   const el = document.getElementById('loc-error');
@@ -1770,18 +1745,15 @@ function resetLocBtn() {
 }
 
 // Inject location into position fill tokens when opening a modal
+// Format: "49.4848°N, 124.2129°W — 1.5 nautical miles, North West of Rouse Bay"
+// Coordinates are always first — landmark is context. Auto-injects whenever GPS is available.
 function injectLocation(positionFillIds) {
-  if (!gpsLocation || !gpsLocation.active) return;
-  // Radio call position — bearing/landmark only, no coordinates
-  // Coast Guard wants: "3.2 nautical miles, North West of Ganges Harbour, BC"
-  // Coordinates are shown separately below the position card if asked
-  let posText = '';
+  if (!gpsLocation || !gpsLocation.coords) return;
+
+  // Build position string: coords always present, landmark appended if available
+  let posText = gpsLocation.coords;
   if (gpsLocation.bearing) {
-    posText = gpsLocation.bearing;
-  } else if (gpsLocation.display) {
-    posText = gpsLocation.display;
-  } else {
-    posText = gpsLocation.coords;
+    posText += ' — ' + gpsLocation.bearing;
   }
 
   positionFillIds.forEach(id => {
